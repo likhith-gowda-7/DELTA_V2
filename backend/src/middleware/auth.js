@@ -1,0 +1,19 @@
+import { verifyAccessToken } from "../config/jwt.js";
+import { AppError } from "../lib/AppError.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
+
+export const protectedRoute = asyncHandler((req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    throw new AppError("No token provided. Please log in.", 401);
+  }
+
+  try {
+    const decoded = verifyAccessToken(token);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    throw new AppError(error.message || "Invalid token", 401);
+  }
+});
