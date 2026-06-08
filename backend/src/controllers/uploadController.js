@@ -1,14 +1,14 @@
-const { uploadToCloudinary } = require("../config/cloudinary");
-const asyncHandler = require("../lib/asyncHandler");
-const AppError = require("../lib/AppError");
-const logger = require("../lib/logger");
+import { asyncHandler } from "../lib/asyncHandler.js";
+import { AppError } from "../lib/AppError.js";
+import logger from "../lib/logger.js";
+import { uploadToCloudinary } from "../config/cloudinary.js";
 
 /**
  * @route   POST /api/uploads/image
  * @desc    Upload image/file to Cloudinary
  * @access  Private
  */
-const uploadFile = asyncHandler(async (req, res) => {
+export const uploadFile = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError("No file provided", 400);
   }
@@ -38,7 +38,3 @@ const uploadFile = asyncHandler(async (req, res) => {
     throw new AppError(`File upload failed: ${error.message}`, 500);
   }
 });
-
-module.exports = {
-  uploadFile,
-};

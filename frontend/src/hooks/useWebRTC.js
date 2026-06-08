@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import logger from "../lib/logger.js";
+import { RTC_CONFIG } from "../lib/callConfig.js";
 
 /**
- * Custom hook for managing WebRTC peer connections
+ * Custom hook for managing WebRTC peer connections.
+ *
+ * Signaling model: instead of `window.dispatchEvent(CustomEvent)` to relay
+ * ICE candidates (which bypasses React and the stores), this hook accepts a
+ * `socket` ref. When set, ICE candidates are emitted directly to the peer
+ * via socket, and the hook subscribes to incoming `webrtc_*` events.
  */
-export const useWebRTC = (callId, isInitiator = false) => {
+export const useWebRTC = (callId, socket = null, isInitiator = false) => {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
@@ -16,14 +22,8 @@ export const useWebRTC = (callId, isInitiator = false) => {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [error, setError] = useState(null);
 
-  // STUN servers for NAT traversal
-  const iceServers = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-  ];
+  // STUN/TURN servers — see frontend/src/lib/callConfig.js
+  const iceServers = RTC_CONFIG.iceServers;
 
   /**
    * Get local media stream (audio/video)
@@ -49,9 +49,7 @@ export const useWebRTC = (callId, isInitiator = false) => {
    */
   const initializePeerConnection = async () => {
     try {
-      const peerConnection = new RTCPeerConnection({
-        iceServers,
-      });
+      const peerConnection = new RTCPeerConnection(RTC_CONFIG);
 
       peerConnectionRef.current = peerConnection;
 
@@ -81,16 +79,16 @@ export const useWebRTC = (callId, isInitiator = false) => {
         setIceConnectionState(peerConnection.iceConnectionState);
       };
 
-      // Handle ICE candidates
+      // Handle ICE candidates — emit to remote peer via socket
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           console.log("ICE candidate:", event.candidate);
-          // Emit to parent for sending to remote peer
-          window.dispatchEvent(
-            new CustomEvent("ice-candidate", {
-              detail: { candidate: event.candidate, callId },
-            }),
-          );
+          if (socket?.current) {
+            socket.current.emit("webrtc_ice_candidate", {
+              callId,
+              candidate: event.candidate,
+            });
+          }
         }
       };
 

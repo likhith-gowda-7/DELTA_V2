@@ -1,6 +1,7 @@
 import express from "express";
 import { validate } from "../middleware/validation.js";
 import { protectedRoute } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 import {
   register,
   login,
@@ -19,10 +20,10 @@ import {
 
 const router = express.Router();
 
-// Public routes
-router.post("/register", validate(registerSchema), register);
-router.post("/login", validate(loginSchema), login);
-router.post("/refresh-token", refreshToken);
+// Public routes — protected by a strict rate limiter against brute force
+router.post("/register", authLimiter, validate(registerSchema), register);
+router.post("/login", authLimiter, validate(loginSchema), login);
+router.post("/refresh-token", authLimiter, refreshToken);
 
 // Protected routes
 router.post("/logout", protectedRoute, logout);

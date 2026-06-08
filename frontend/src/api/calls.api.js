@@ -69,4 +69,78 @@ export const callsAPI = {
     const response = await apiClient.get("/calls/stats");
     return response.data.data;
   },
+
+  // Create a group call
+  createGroupCall: async (
+    participantIds,
+    chatId,
+    mediaType = "audio-video",
+  ) => {
+    const response = await apiClient.post("/calls/group/create", {
+      participantIds,
+      chatId,
+      mediaType,
+    });
+    return response.data.data;
+  },
+
+  // Add participant to group call
+  addParticipant: async (callId, userId) => {
+    const response = await apiClient.put(`/calls/${callId}/add-participant`, {
+      userId,
+    });
+    return response.data.data;
+  },
+
+  // Remove participant from group call
+  removeParticipant: async (callId, userId) => {
+    const response = await apiClient.put(
+      `/calls/${callId}/remove-participant`,
+      {
+        userId,
+      },
+    );
+    return response.data.data;
+  },
+
+  // Start screen sharing
+  startScreenShare: async (callId) => {
+    const response = await apiClient.put(`/calls/${callId}/start-screen-share`);
+    return response.data.data;
+  },
+
+  // Stop screen sharing
+  stopScreenShare: async (callId) => {
+    const response = await apiClient.put(`/calls/${callId}/stop-screen-share`);
+    return response.data.data;
+  },
+
+  // Start recording
+  startRecording: async (callId) => {
+    const response = await apiClient.put(`/calls/${callId}/start-recording`);
+    return response.data.data;
+  },
+
+  // Stop recording
+  stopRecording: async (callId, recordingUrl = null) => {
+    const response = await apiClient.put(`/calls/${callId}/stop-recording`, {
+      recordingUrl,
+    });
+    return response.data.data;
+  },
+
+  // Get group call details
+  getGroupCallDetails: async (callId) => {
+    const response = await apiClient.get(`/calls/${callId}/details`);
+    return response.data.data;
+  },
+
+  // Update participant quality metrics
+  updateParticipantQuality: async (callId, qualityMetrics) => {
+    const response = await apiClient.put(
+      `/calls/${callId}/participant-quality`,
+      qualityMetrics,
+    );
+    return response.data.data;
+  },
 };

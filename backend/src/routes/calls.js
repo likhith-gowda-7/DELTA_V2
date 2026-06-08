@@ -63,6 +63,100 @@ router.put(
 );
 
 /**
+ * POST /api/calls/group/create
+ * Create a new group call
+ */
+router.post(
+  "/group/create",
+  validateRequest(callValidator.createGroupCallSchema, "body"),
+  callController.createGroupCall,
+);
+
+/**
+ * PUT /api/calls/:id/add-participant
+ * Add participant to group call
+ */
+router.put(
+  "/:id/add-participant",
+  validateRequest(callValidator.callIdSchema, "params"),
+  validateRequest(callValidator.addParticipantSchema, "body"),
+  callController.addParticipant,
+);
+
+/**
+ * PUT /api/calls/:id/remove-participant
+ * Remove participant from group call
+ */
+router.put(
+  "/:id/remove-participant",
+  validateRequest(callValidator.callIdSchema, "params"),
+  validateRequest(callValidator.removeParticipantSchema, "body"),
+  callController.removeParticipant,
+);
+
+/**
+ * PUT /api/calls/:id/start-screen-share
+ * Start screen sharing in a call
+ */
+router.put(
+  "/:id/start-screen-share",
+  validateRequest(callValidator.callIdSchema, "params"),
+  callController.startScreenShare,
+);
+
+/**
+ * PUT /api/calls/:id/stop-screen-share
+ * Stop screen sharing in a call
+ */
+router.put(
+  "/:id/stop-screen-share",
+  validateRequest(callValidator.callIdSchema, "params"),
+  callController.stopScreenShare,
+);
+
+/**
+ * PUT /api/calls/:id/start-recording
+ * Start recording a call
+ */
+router.put(
+  "/:id/start-recording",
+  validateRequest(callValidator.callIdSchema, "params"),
+  callController.startRecording,
+);
+
+/**
+ * PUT /api/calls/:id/stop-recording
+ * Stop recording a call
+ */
+router.put(
+  "/:id/stop-recording",
+  validateRequest(callValidator.callIdSchema, "params"),
+  validateRequest(callValidator.stopRecordingSchema, "body"),
+  callController.stopRecording,
+);
+
+/**
+ * GET /api/calls/:id/details
+ * Get group call details
+ */
+router.get(
+  "/:id/details",
+  validateRequest(callValidator.callIdSchema, "params"),
+  callController.getGroupCallDetails,
+);
+
+/**
+ * PUT /api/calls/:id/participant-quality
+ * Update participant quality metrics
+ */
+router.put(
+  "/:id/participant-quality",
+  validateRequest(callValidator.callIdSchema, "params"),
+  validateRequest(callValidator.updateParticipantQualitySchema, "body"),
+  callController.updateParticipantQuality,
+);
+
+/**
  * GET /api/calls/:id
  * Get call details
  */

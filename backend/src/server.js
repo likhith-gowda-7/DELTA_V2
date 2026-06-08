@@ -22,6 +22,7 @@ import {
   setupChatEvents,
   setupNotificationEvents,
   setupCallEvents,
+  setupGroupCallEvents,
 } from "./socket/middleware.js";
 
 // Load environment variables
@@ -93,6 +94,9 @@ io.on("connection", (socket) => {
 
   // Setup call signaling events
   setupCallEvents(io, socket);
+
+  // Setup group call events
+  setupGroupCallEvents(io, socket);
 
   socket.on("disconnect", () => {
     logger.info(`Socket disconnected: ${socket.id}`);

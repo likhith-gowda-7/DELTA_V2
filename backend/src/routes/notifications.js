@@ -1,6 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const {
+import express from "express";
+import { protectedRoute } from "../middleware/auth.js";
+import { validateRequest } from "../middleware/validation.js";
+import {
+  paginationSchema,
+  unreadQuerySchema,
+  notificationIdSchema,
+} from "../validators/notification.js";
+import {
   getNotifications,
   getUnreadNotifications,
   getUnreadCount,
@@ -8,14 +14,9 @@ const {
   markAllAsRead,
   deleteNotification,
   deleteAllNotifications,
-} = require("../controllers/notificationController");
-const { protectedRoute } = require("../middleware/auth");
-const { validateRequest } = require("../middleware/validation");
-const {
-  paginationSchema,
-  unreadQuerySchema,
-  notificationIdSchema,
-} = require("../validators/notification");
+} from "../controllers/notificationController.js";
+
+const router = express.Router();
 
 // All routes require authentication
 router.use(protectedRoute);
@@ -25,7 +26,7 @@ router.use(protectedRoute);
  * @desc    Get all notifications (paginated)
  * @access  Private
  */
-router.get("/", validateRequest({ query: paginationSchema }), getNotifications);
+router.get("/", validateRequest(paginationSchema, "query"), getNotifications);
 
 /**
  * @route   GET /api/notifications/unread
@@ -34,7 +35,7 @@ router.get("/", validateRequest({ query: paginationSchema }), getNotifications);
  */
 router.get(
   "/unread",
-  validateRequest({ query: unreadQuerySchema }),
+  validateRequest(unreadQuerySchema, "query"),
   getUnreadNotifications,
 );
 
@@ -52,7 +53,7 @@ router.get("/unread-count", getUnreadCount);
  */
 router.put(
   "/:id/read",
-  validateRequest({ params: notificationIdSchema }),
+  validateRequest(notificationIdSchema, "params"),
   markAsRead,
 );
 
@@ -70,7 +71,7 @@ router.put("/read-all", markAllAsRead);
  */
 router.delete(
   "/:id",
-  validateRequest({ params: notificationIdSchema }),
+  validateRequest(notificationIdSchema, "params"),
   deleteNotification,
 );
 
@@ -81,4 +82,4 @@ router.delete(
  */
 router.delete("/", deleteAllNotifications);
 
-module.exports = router;
+export default router;

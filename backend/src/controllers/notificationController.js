@@ -1,13 +1,13 @@
-const notificationService = require("../services/notification.service");
-const asyncHandler = require("../lib/asyncHandler");
-const AppError = require("../lib/AppError");
+import { asyncHandler } from "../lib/asyncHandler.js";
+import { AppError } from "../lib/AppError.js";
+import * as notificationService from "../services/notification.service.js";
 
 /**
  * @route   GET /api/notifications
  * @desc    Get all notifications for current user (paginated)
  * @access  Private
  */
-const getNotifications = asyncHandler(async (req, res) => {
+export const getNotifications = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
   const result = await notificationService.getNotifications(
@@ -32,7 +32,7 @@ const getNotifications = asyncHandler(async (req, res) => {
  * @desc    Get unread notifications for current user
  * @access  Private
  */
-const getUnreadNotifications = asyncHandler(async (req, res) => {
+export const getUnreadNotifications = asyncHandler(async (req, res) => {
   const { limit = 10 } = req.query;
 
   const notifications = await notificationService.getUnreadNotifications(
@@ -51,7 +51,7 @@ const getUnreadNotifications = asyncHandler(async (req, res) => {
  * @desc    Get unread notification count for current user
  * @access  Private
  */
-const getUnreadCount = asyncHandler(async (req, res) => {
+export const getUnreadCount = asyncHandler(async (req, res) => {
   const count = await notificationService.getUnreadCount(req.user._id);
 
   res.status(200).json({
@@ -65,7 +65,7 @@ const getUnreadCount = asyncHandler(async (req, res) => {
  * @desc    Mark single notification as read
  * @access  Private
  */
-const markAsRead = asyncHandler(async (req, res) => {
+export const markAsRead = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const notification = await notificationService.markAsRead(id, req.user._id);
@@ -82,7 +82,7 @@ const markAsRead = asyncHandler(async (req, res) => {
  * @desc    Mark all notifications as read for current user
  * @access  Private
  */
-const markAllAsRead = asyncHandler(async (req, res) => {
+export const markAllAsRead = asyncHandler(async (req, res) => {
   const result = await notificationService.markAllAsRead(req.user._id);
 
   res.status(200).json({
@@ -96,7 +96,7 @@ const markAllAsRead = asyncHandler(async (req, res) => {
  * @desc    Delete a notification
  * @access  Private
  */
-const deleteNotification = asyncHandler(async (req, res) => {
+export const deleteNotification = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   await notificationService.deleteNotification(id, req.user._id);
@@ -112,7 +112,7 @@ const deleteNotification = asyncHandler(async (req, res) => {
  * @desc    Delete all notifications for current user
  * @access  Private
  */
-const deleteAllNotifications = asyncHandler(async (req, res) => {
+export const deleteAllNotifications = asyncHandler(async (req, res) => {
   const result = await notificationService.deleteAllNotifications(req.user._id);
 
   res.status(200).json({
@@ -120,13 +120,3 @@ const deleteAllNotifications = asyncHandler(async (req, res) => {
     message: `Deleted ${result.deletedCount} notifications`,
   });
 });
-
-module.exports = {
-  getNotifications,
-  getUnreadNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  deleteAllNotifications,
-};

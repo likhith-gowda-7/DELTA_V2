@@ -1,7 +1,7 @@
-const z = require("zod");
+import { z } from "zod";
 
 // Allowed file types for validation
-const ALLOWED_FILE_TYPES = [
+export const ALLOWED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/gif",
@@ -11,7 +11,7 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 // File upload validation schema
-const fileUploadSchema = z.object({
+export const fileUploadSchema = z.object({
   file: z
     .object({
       fieldname: z.string(),
@@ -23,8 +23,3 @@ const fileUploadSchema = z.object({
     })
     .strict(),
 });
-
-module.exports = {
-  fileUploadSchema,
-  ALLOWED_FILE_TYPES,
-};

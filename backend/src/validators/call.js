@@ -75,3 +75,43 @@ export const updateCallMetadataSchema = z.object({
   connectionQuality: z.enum(["good", "fair", "poor"]).optional(),
   iceCandidatesExchanged: z.boolean().optional(),
 });
+
+/**
+ * Schema for creating a group call
+ */
+export const createGroupCallSchema = z.object({
+  participantIds: z.array(objectIdSchema).min(1),
+  chatId: objectIdSchema,
+  mediaType: z.enum(["audio", "video", "audio-video"]).default("audio-video"),
+});
+
+/**
+ * Schema for adding a participant to a call
+ */
+export const addParticipantSchema = z.object({
+  userId: objectIdSchema,
+});
+
+/**
+ * Schema for removing a participant from a call
+ */
+export const removeParticipantSchema = z.object({
+  userId: objectIdSchema,
+});
+
+/**
+ * Schema for stopping recording
+ */
+export const stopRecordingSchema = z.object({
+  recordingUrl: z.string().url().optional(),
+});
+
+/**
+ * Schema for updating participant quality metrics
+ */
+export const updateParticipantQualitySchema = z.object({
+  audio: z.string().optional(),
+  video: z.string().optional(),
+  bandwidth: z.number().positive().optional(),
+  packetLoss: z.number().min(0).max(100).optional(),
+});

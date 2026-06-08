@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Call from "../models/Call.js";
 import AppError from "../lib/AppError.js";
 import logger from "../lib/logger.js";
@@ -345,6 +346,255 @@ export const getUserCallStats = async (userId) => {
     };
   } catch (error) {
     logger.error("Error fetching call statistics:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new group call
+ */
+export const createGroupCall = async (
+  initiatorId,
+  participantIds,
+  chatId,
+  mediaType = "audio-video",
+) => {
+  try {
+    const call = await Call.createGroupCall(
+      initiatorId,
+      participantIds,
+      chatId,
+      mediaType,
+    );
+    return call;
+  } catch (error) {
+    logger.error("Error creating group call:", error);
+    throw error;
+  }
+};
+
+/**
+ * Add participant to active group call
+ */
+export const addParticipantToCall = async (callId, userId, addingUserId) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify the user adding participant is the initiator or admin
+    if (call.initiatorId.toString() !== addingUserId.toString()) {
+      throw new AppError(
+        "Unauthorized: Only call initiator can add participants",
+        403,
+      );
+    }
+
+    // Check if already at max participants
+    if (call.participants.length >= call.maxParticipants) {
+      throw new AppError("Call has reached maximum participants", 400);
+    }
+
+    await call.addParticipant(userId);
+    return call;
+  } catch (error) {
+    logger.error("Error adding participant to call:", error);
+    throw error;
+  }
+};
+
+/**
+ * Remove participant from group call
+ */
+export const removeParticipantFromCall = async (callId, userId) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    await call.removeParticipant(userId);
+    return call;
+  } catch (error) {
+    logger.error("Error removing participant from call:", error);
+    throw error;
+  }
+};
+
+/**
+ * Start screen sharing in a call
+ */
+export const startScreenShare = async (callId, userId) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is part of the call
+    if (!call.participants.some((id) => id.toString() === userId.toString())) {
+      throw new AppError("Unauthorized: You are not part of this call", 403);
+    }
+
+    await call.startScreenShare(userId);
+    logger.info(`Screen sharing started for user ${userId} in call ${callId}`);
+    return call;
+  } catch (error) {
+    logger.error("Error starting screen share:", error);
+    throw error;
+  }
+};
+
+/**
+ * Stop screen sharing in a call
+ */
+export const stopScreenShare = async (callId, userId) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is part of the call
+    if (!call.participants.some((id) => id.toString() === userId.toString())) {
+      throw new AppError("Unauthorized: You are not part of this call", 403);
+    }
+
+    await call.stopScreenShare(userId);
+    logger.info(`Screen sharing stopped for user ${userId} in call ${callId}`);
+    return call;
+  } catch (error) {
+    logger.error("Error stopping screen share:", error);
+    throw error;
+  }
+};
+
+/**
+ * Start recording a call
+ */
+export const startRecording = async (callId, userId) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is the initiator
+    if (call.initiatorId.toString() !== userId.toString()) {
+      throw new AppError(
+        "Unauthorized: Only call initiator can start recording",
+        403,
+      );
+    }
+
+    await call.startRecording();
+    logger.info(`Recording started for call ${callId}`);
+    return call;
+  } catch (error) {
+    logger.error("Error starting recording:", error);
+    throw error;
+  }
+};
+
+/**
+ * Stop recording a call
+ */
+export const stopRecording = async (callId, userId, recordingUrl = null) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is the initiator
+    if (call.initiatorId.toString() !== userId.toString()) {
+      throw new AppError(
+        "Unauthorized: Only call initiator can stop recording",
+        403,
+      );
+    }
+
+    await call.stopRecording();
+    if (recordingUrl) {
+      call.recordingUrl = recordingUrl;
+      await call.save();
+    }
+    logger.info(`Recording stopped for call ${callId}`);
+    return call;
+  } catch (error) {
+    logger.error("Error stopping recording:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get group call details with participants
+ */
+export const getGroupCallDetails = async (callId, userId) => {
+  try {
+    const call = await Call.getGroupCallDetails(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is part of the call
+    if (
+      !call.participants.some((p) => p._id.toString() === userId.toString())
+    ) {
+      throw new AppError("Unauthorized: You are not part of this call", 403);
+    }
+
+    return call;
+  } catch (error) {
+    logger.error("Error fetching group call details:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update participant quality metrics
+ */
+export const updateParticipantQuality = async (
+  callId,
+  userId,
+  qualityMetrics,
+) => {
+  try {
+    const call = await Call.findById(callId);
+
+    if (!call) {
+      throw new AppError("Call not found", 404);
+    }
+
+    // Verify user is part of the call
+    if (!call.participants.some((id) => id.toString() === userId.toString())) {
+      throw new AppError("Unauthorized: You are not part of this call", 403);
+    }
+
+    await call.updateParticipantQuality(userId, qualityMetrics);
+    return call;
+  } catch (error) {
+    logger.error("Error updating participant quality:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get group call statistics
+ */
+export const getGroupCallStats = async (userId) => {
+  try {
+    return await Call.getCallStats(userId);
+  } catch (error) {
+    logger.error("Error fetching group call statistics:", error);
     throw error;
   }
 };

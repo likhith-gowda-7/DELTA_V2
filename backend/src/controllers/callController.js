@@ -169,3 +169,163 @@ export const getCallStats = asyncHandler(async (req, res) => {
     data: stats,
   });
 });
+
+/**
+ * Create a group call
+ * POST /api/calls/group/create
+ */
+export const createGroupCall = asyncHandler(async (req, res) => {
+  const { participantIds, chatId, mediaType } = req.body;
+  const initiatorId = req.user._id;
+
+  const call = await callService.createGroupCall(
+    initiatorId,
+    participantIds,
+    chatId,
+    mediaType,
+  );
+
+  res.status(201).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Add participant to group call
+ * PUT /api/calls/:id/add-participant
+ */
+export const addParticipant = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const { userId } = req.body;
+  const addingUserId = req.user._id;
+
+  const call = await callService.addParticipantToCall(
+    callId,
+    userId,
+    addingUserId,
+  );
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Remove participant from group call
+ * PUT /api/calls/:id/remove-participant
+ */
+export const removeParticipant = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const { userId } = req.body;
+
+  const call = await callService.removeParticipantFromCall(callId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Start screen sharing
+ * PUT /api/calls/:id/start-screen-share
+ */
+export const startScreenShare = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const userId = req.user._id;
+
+  const call = await callService.startScreenShare(callId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Stop screen sharing
+ * PUT /api/calls/:id/stop-screen-share
+ */
+export const stopScreenShare = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const userId = req.user._id;
+
+  const call = await callService.stopScreenShare(callId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Start recording a call
+ * PUT /api/calls/:id/start-recording
+ */
+export const startRecording = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const userId = req.user._id;
+
+  const call = await callService.startRecording(callId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Stop recording a call
+ * PUT /api/calls/:id/stop-recording
+ */
+export const stopRecording = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const { recordingUrl } = req.body;
+  const userId = req.user._id;
+
+  const call = await callService.stopRecording(callId, userId, recordingUrl);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Get group call details
+ * GET /api/calls/:id/details
+ */
+export const getGroupCallDetails = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const userId = req.user._id;
+
+  const call = await callService.getGroupCallDetails(callId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});
+
+/**
+ * Update participant quality metrics
+ * PUT /api/calls/:id/participant-quality
+ */
+export const updateParticipantQuality = asyncHandler(async (req, res) => {
+  const { id: callId } = req.params;
+  const userId = req.user._id;
+  const qualityMetrics = req.body;
+
+  const call = await callService.updateParticipantQuality(
+    callId,
+    userId,
+    qualityMetrics,
+  );
+
+  res.status(200).json({
+    success: true,
+    data: call,
+  });
+});

@@ -37,3 +37,10 @@ export const validate =
       throw new AppError("Validation error", 400);
     }
   };
+
+/**
+ * Alias for `validate` to match legacy route imports.
+ * Allows routes that import `validateRequest` (e.g. calls.js, chats.js,
+ * messages.js) to keep working with the canonical `validate` middleware.
+ */
+export const validateRequest = validate;

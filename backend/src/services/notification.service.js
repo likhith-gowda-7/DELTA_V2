@@ -1,13 +1,13 @@
-const Notification = require("../models/Notification");
-const User = require("../models/User");
-const Chat = require("../models/Chat");
-const logger = require("../lib/logger");
-const AppError = require("../lib/AppError");
+import Notification from "../models/Notification.js";
+import User from "../models/User.js";
+import Chat from "../models/Chat.js";
+import logger from "../lib/logger.js";
+import { AppError } from "../lib/AppError.js";
 
 /**
  * Create a new notification
  */
-const createNotification = async (
+export const createNotification = async (
   userId,
   type,
   chatId,
@@ -59,7 +59,7 @@ const createNotification = async (
 /**
  * Get all notifications for a user (paginated)
  */
-const getNotifications = async (userId, page = 1, limit = 20) => {
+export const getNotifications = async (userId, page = 1, limit = 20) => {
   try {
     const skip = (page - 1) * limit;
 
@@ -89,7 +89,7 @@ const getNotifications = async (userId, page = 1, limit = 20) => {
 /**
  * Get unread notifications for a user
  */
-const getUnreadNotifications = async (userId, limit = 10) => {
+export const getUnreadNotifications = async (userId, limit = 10) => {
   try {
     const notifications = await Notification.find({
       userId,
@@ -111,7 +111,7 @@ const getUnreadNotifications = async (userId, limit = 10) => {
 /**
  * Get unread count for a user
  */
-const getUnreadCount = async (userId) => {
+export const getUnreadCount = async (userId) => {
   try {
     const count = await Notification.countDocuments({
       userId,
@@ -128,7 +128,7 @@ const getUnreadCount = async (userId) => {
 /**
  * Mark notification as read
  */
-const markAsRead = async (notificationId, userId) => {
+export const markAsRead = async (notificationId, userId) => {
   try {
     const notification = await Notification.findById(notificationId);
 
@@ -156,7 +156,7 @@ const markAsRead = async (notificationId, userId) => {
 /**
  * Mark all notifications as read for a user
  */
-const markAllAsRead = async (userId) => {
+export const markAllAsRead = async (userId) => {
   try {
     const result = await Notification.updateMany(
       {
@@ -184,7 +184,7 @@ const markAllAsRead = async (userId) => {
 /**
  * Delete a notification
  */
-const deleteNotification = async (notificationId, userId) => {
+export const deleteNotification = async (notificationId, userId) => {
   try {
     const notification = await Notification.findById(notificationId);
 
@@ -210,7 +210,7 @@ const deleteNotification = async (notificationId, userId) => {
 /**
  * Delete all notifications for a user
  */
-const deleteAllNotifications = async (userId) => {
+export const deleteAllNotifications = async (userId) => {
   try {
     const result = await Notification.deleteMany({ userId });
 
@@ -228,7 +228,7 @@ const deleteAllNotifications = async (userId) => {
  * Bulk create notifications for multiple users
  * Useful for group chat notifications
  */
-const createNotificationsForUsers = async (
+export const createNotificationsForUsers = async (
   userIds,
   type,
   chatId,
@@ -264,16 +264,4 @@ const createNotificationsForUsers = async (
     logger.error("Error bulk creating notifications:", error);
     throw error;
   }
-};
-
-module.exports = {
-  createNotification,
-  getNotifications,
-  getUnreadNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  deleteAllNotifications,
-  createNotificationsForUsers,
 };

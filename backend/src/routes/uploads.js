@@ -1,8 +1,9 @@
-const express = require("express");
+import express from "express";
+import { protectedRoute } from "../middleware/auth.js";
+import { upload } from "../config/cloudinary.js";
+import { uploadFile } from "../controllers/uploadController.js";
+
 const router = express.Router();
-const { uploadFile } = require("../controllers/uploadController");
-const { protectedRoute } = require("../middleware/auth");
-const { upload } = require("../config/cloudinary");
 
 // All routes require authentication
 router.use(protectedRoute);
@@ -14,4 +15,4 @@ router.use(protectedRoute);
  */
 router.post("/file", upload.single("file"), uploadFile);
 
-module.exports = router;
+export default router;

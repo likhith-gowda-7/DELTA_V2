@@ -1,13 +1,57 @@
 import { useState } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
-import { ChevronDown, Phone, Video, Search, MoreVertical } from "lucide-react";
+import { useCallStore } from "../../store/useCallStore";
+import { useSocketStore } from "../../store/useSocketStore";
+import {
+  ChevronDown,
+  Phone,
+  Video,
+  Search,
+  MoreVertical,
+  Users,
+} from "lucide-react";
 import NotificationBell from "../notifications/NotificationBell";
 import CallButton from "../calls/CallButton";
 
 export default function ChatHeader({ chat, onUpdateGroupClick }) {
   const { user } = useAuthStore();
+  const { createGroupCall } = useCallStore();
+  const { socket } = useSocketStore();
   const [showOptions, setShowOptions] = useState(false);
+  const [showCallMenu, setShowCallMenu] = useState(false);
+  const [isStartingCall, setIsStartingCall] = useState(false);
+
+  const handleStartGroupCall = async (mediaType) => {
+    try {
+      setIsStartingCall(true);
+      setShowCallMenu(false);
+
+      // Get all participant IDs except current user
+      const participantIds = chat.users
+        .filter((u) => u._id !== user._id)
+        .map((u) => u._id);
+
+      // Create group call
+      const call = await createGroupCall(participantIds, chat._id, mediaType);
+
+      // Emit socket event to notify participants
+      if (socket && call) {
+        socket.emit("group_call_initiated", {
+          callId: call._id,
+          initiatorId: user._id,
+          participantIds,
+          mediaType,
+          chatId: chat._id,
+        });
+      }
+
+      setIsStartingCall(false);
+    } catch (error) {
+      console.error("Error starting group call:", error);
+      setIsStartingCall(false);
+    }
+  };
 
   if (!chat) {
     return null;
@@ -67,13 +111,45 @@ export default function ChatHeader({ chat, onUpdateGroupClick }) {
         <div className="flex items-center gap-2">
           <NotificationBell />
 
-          {/* Call button (only for 1-to-1 chats) */}
-          {!chat.isGroupChat && (
+          {/* Call buttons (audio/video for 1-to-1, group calls for groups) */}
+          {!chat.isGroupChat ? (
             <CallButton
               recipientId={chat.users.find((u) => u._id !== user._id)?._id}
               recipientName={getHeaderTitle()}
               disabled={false}
             />
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setShowCallMenu(!showCallMenu)}
+                disabled={isStartingCall}
+                className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Start group call"
+              >
+                <Users size={20} />
+              </button>
+
+              {/* Group call menu */}
+              {showCallMenu && !isStartingCall && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 py-2 border border-gray-200 dark:border-gray-700">
+                  {/* Audio Group Call */}
+                  <button
+                    onClick={() => handleStartGroupCall("audio")}
+                    className="w-full text-left px-4 py-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                  >
+                    <Phone size={18} /> Audio Group Call
+                  </button>
+
+                  {/* Video Group Call */}
+                  <button
+                    onClick={() => handleStartGroupCall("audio-video")}
+                    className="w-full text-left px-4 py-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                  >
+                    <Video size={18} /> Video Group Call
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">

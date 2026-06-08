@@ -20,6 +20,16 @@ export const useCallStore = create((set, get) => ({
   callDuration: 0,
   callStartTime: null,
 
+  // Group call state
+  isGroupCall: false,
+  groupCallParticipants: [],
+  participantDetails: [],
+  screenShareParticipants: [],
+  isScreenSharing: false,
+  isRecording: false,
+  recordingUrl: null,
+  callMetrics: {},
+
   // Actions
   initiateCall: async (recipientId, mediaType = "audio-video") => {
     try {
@@ -210,5 +220,226 @@ export const useCallStore = create((set, get) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  // Group call actions
+  createGroupCall: async (
+    participantIds,
+    chatId,
+    mediaType = "audio-video",
+  ) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.createGroupCall(
+        participantIds,
+        chatId,
+        mediaType,
+      );
+      set({
+        currentCall: call,
+        isCallActive: true,
+        isGroupCall: true,
+        groupCallParticipants: call.participants || [],
+        participantDetails: call.participantDetails || [],
+        mediaType,
+        callStartTime: new Date(),
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to create group call",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  addParticipant: async (callId, userId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.addParticipant(callId, userId);
+      set({
+        currentCall: call,
+        groupCallParticipants: call.participants || [],
+        participantDetails: call.participantDetails || [],
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to add participant",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  removeParticipant: async (callId, userId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.removeParticipant(callId, userId);
+      set({
+        currentCall: call,
+        groupCallParticipants: call.participants || [],
+        participantDetails: call.participantDetails || [],
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to remove participant",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  startScreenShare: async (callId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.startScreenShare(callId);
+      set({
+        currentCall: call,
+        isScreenSharing: true,
+        screenShareParticipants: call.screenShareParticipants || [],
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to start screen sharing",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  stopScreenShare: async (callId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.stopScreenShare(callId);
+      set({
+        currentCall: call,
+        isScreenSharing: false,
+        screenShareParticipants: call.screenShareParticipants || [],
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to stop screen sharing",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  startRecording: async (callId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.startRecording(callId);
+      set({
+        currentCall: call,
+        isRecording: true,
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to start recording",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  stopRecording: async (callId, recordingUrl = null) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.stopRecording(callId, recordingUrl);
+      set({
+        currentCall: call,
+        isRecording: false,
+        recordingUrl: call.recordingUrl || recordingUrl,
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to stop recording",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  getGroupCallDetails: async (callId) => {
+    try {
+      set({ loading: true, error: null });
+      const call = await callsAPI.getGroupCallDetails(callId);
+      set({
+        currentCall: call,
+        isGroupCall: call.isGroupCall || false,
+        groupCallParticipants: call.participants || [],
+        participantDetails: call.participantDetails || [],
+        screenShareParticipants: call.screenShareParticipants || [],
+        loading: false,
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to fetch group call details",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  updateParticipantQuality: async (callId, qualityMetrics) => {
+    try {
+      const call = await callsAPI.updateParticipantQuality(
+        callId,
+        qualityMetrics,
+      );
+      set({
+        currentCall: call,
+        callMetrics: {
+          ...get().callMetrics,
+          ...qualityMetrics,
+        },
+      });
+      return call;
+    } catch (error) {
+      set({
+        error: error.message || "Failed to update participant quality",
+      });
+      throw error;
+    }
+  },
+
+  setGroupCallParticipants: (participants) => {
+    set({ groupCallParticipants: participants });
+  },
+
+  setParticipantDetails: (details) => {
+    set({ participantDetails: details });
+  },
+
+  setScreenShareParticipants: (participants) => {
+    set({ screenShareParticipants: participants });
+  },
+
+  resetGroupCallState: () => {
+    set({
+      isGroupCall: false,
+      groupCallParticipants: [],
+      participantDetails: [],
+      screenShareParticipants: [],
+      isScreenSharing: false,
+      isRecording: false,
+      recordingUrl: null,
+      callMetrics: {},
+    });
   },
 }));

@@ -1,5 +1,8 @@
 import { verifyAccessToken } from "../config/jwt.js";
 import logger from "../lib/logger.js";
+import { messageService } from "../services/message.service.js";
+import { recordMetric } from "../services/callMetrics.service.js";
+import { AppError } from "../lib/AppError.js";
 
 // Socket.IO authentication middleware
 export const socketAuthMiddleware = (socket, next) => {
@@ -131,31 +134,41 @@ export const setupChatEvents = (io, socket) => {
     });
   });
 
-  // Send message in real-time
-  socket.on("send_message", (messageData) => {
+  // Send message in real-time. Persist before broadcast so messages
+  // sent only over the socket survive a page reload. Mirrors the
+  // `POST /api/messages` HTTP path.
+  socket.on("send_message", async (messageData) => {
     if (!socket.userId || !messageData.chatId || !messageData.content) {
       logger.warn(`send_message event invalid: ${socket.id}`);
       return;
     }
 
-    const { chatId, content, messageId, sender } = messageData;
+    const { chatId, content, fileUrl, fileType } = messageData;
 
-    logger.info(`Message sent in chat ${chatId} by user ${socket.userId}`);
+    try {
+      const message = await messageService.sendMessage(
+        chatId,
+        socket.userId,
+        content,
+        fileUrl || null,
+        fileType || null,
+      );
 
-    // Broadcast to all users in the chat room (including sender)
-    io.to(chatId).emit("receive_message", {
-      _id: messageId,
-      chatId,
-      content,
-      sender: {
-        _id: sender._id,
-        name: sender.name,
-        avatar: sender.avatar,
-      },
-      createdAt: new Date(),
-      readBy: [{ user: sender._id }],
-      isDeleted: false,
-    });
+      logger.info(`Message sent in chat ${chatId} by user ${socket.userId}`);
+
+      // Broadcast the *persisted* message (with real _id, createdAt, etc.)
+      // to all users in the chat room, including the sender.
+      io.to(chatId).emit("receive_message", message);
+    } catch (err) {
+      logger.error(
+        `send_message persistence failed for ${socket.userId} in ${chatId}: ${err.message}`,
+      );
+      // Notify the sender only so they can retry / show an error
+      socket.emit("send_message_error", {
+        chatId,
+        message: err instanceof AppError ? err.message : "Failed to send message",
+      });
+    }
   });
 
   // Message edited
@@ -477,5 +490,158 @@ export const setupCallEvents = (io, socket) => {
       initiatorId: socket.userId,
       timestamp: new Date(),
     });
+  });
+};
+
+// Socket events for group calls
+export const setupGroupCallEvents = (io, socket) => {
+  // Group call initiated
+  socket.on("group_call_initiated", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds, mediaType } = data;
+
+    logger.info(
+      `Group call initiated: ${socket.userId} with ${participantIds.length} participants`,
+    );
+
+    // Send incoming group call notification to all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("incoming_group_call", {
+        callId,
+        initiatorId: socket.userId,
+        participantIds,
+        mediaType,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Participant joined group call
+  socket.on("participant_joined", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds } = data;
+
+    logger.info(`Participant ${socket.userId} joined group call ${callId}`);
+
+    // Notify all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("participant_joined_call", {
+        callId,
+        userId: socket.userId,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Participant left group call
+  socket.on("participant_left", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds } = data;
+
+    logger.info(`Participant ${socket.userId} left group call ${callId}`);
+
+    // Notify remaining participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("participant_left_call", {
+        callId,
+        userId: socket.userId,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Screen sharing started
+  socket.on("screen_share_started", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds } = data;
+
+    logger.info(`Screen sharing started: ${socket.userId} in call ${callId}`);
+
+    // Notify all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("screen_share_started", {
+        callId,
+        userId: socket.userId,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Screen sharing stopped
+  socket.on("screen_share_stopped", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds } = data;
+
+    logger.info(`Screen sharing stopped: ${socket.userId} in call ${callId}`);
+
+    // Notify all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("screen_share_stopped", {
+        callId,
+        userId: socket.userId,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Recording started
+  socket.on("recording_started", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds } = data;
+
+    logger.info(`Recording started: ${socket.userId} in call ${callId}`);
+
+    // Notify all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("recording_started", {
+        callId,
+        startedBy: socket.userId,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Recording stopped
+  socket.on("recording_stopped", (data) => {
+    if (!socket.userId) return;
+
+    const { callId, participantIds, recordingUrl } = data;
+
+    logger.info(`Recording stopped: ${socket.userId} in call ${callId}`);
+
+    // Notify all participants
+    participantIds.forEach((participantId) => {
+      io.to(participantId).emit("recording_stopped", {
+        callId,
+        stoppedBy: socket.userId,
+        recordingUrl,
+        timestamp: new Date(),
+      });
+    });
+  });
+
+  // Send metrics/analytics — persists a quality sample for the
+  // sender of this event. Frontend fires this on
+  // GROUP_CALL_LIMITS.QUALITY_REPORT_INTERVAL_MS.
+  socket.on("call_metrics", async (data) => {
+    if (!socket.userId) return;
+
+    const { callId, metrics } = data;
+    if (!callId || !metrics) return;
+
+    try {
+      await recordMetric(callId, socket.userId, metrics);
+    } catch (err) {
+      // Log but don't fail the call — metrics are non-critical
+      logger.warn(
+        `Failed to record call metrics for ${socket.userId} in ${callId}: ${err.message}`,
+      );
+    }
   });
 };

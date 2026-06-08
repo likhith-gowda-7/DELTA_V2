@@ -10,12 +10,19 @@ import CreateGroupModal from "../modals/CreateGroupModal";
 import UpdateGroupModal from "../modals/UpdateGroupModal";
 import CallNotification from "../calls/CallNotification";
 import CallWindow from "../calls/CallWindow";
+import GroupCallWindow from "../calls/GroupCallWindow";
 
 export default function ChatPage() {
   const { user } = useAuthStore();
   const { chats, selectedChat, fetchChats } = useChatStore();
   const { socket } = useSocketStore();
-  const { setIncomingCall, currentCall, isCallActive } = useCallStore();
+  const {
+    setIncomingCall,
+    currentCall,
+    isCallActive,
+    isGroupCall,
+    groupCallParticipants,
+  } = useCallStore();
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showUpdateGroupModal, setShowUpdateGroupModal] = useState(false);
 
@@ -59,21 +66,28 @@ export default function ChatPage() {
       {/* Active Call Window */}
       {isCallActive && currentCall && (
         <div className="fixed inset-0 z-40 bg-black">
-          <CallWindow
-            callId={currentCall._id}
-            isInitiator={currentCall.initiatorId === user?._id}
-            remoteUserId={
-              currentCall.initiatorId === user?._id
-                ? currentCall.recipientId
-                : currentCall.initiatorId
-            }
-          />
+          {isGroupCall ? (
+            <GroupCallWindow
+              callId={currentCall._id}
+              participants={groupCallParticipants}
+            />
+          ) : (
+            <CallWindow
+              callId={currentCall._id}
+              isInitiator={currentCall.initiatorId === user?._id}
+              remoteUserId={
+                currentCall.initiatorId === user?._id
+                  ? currentCall.recipientId
+                  : currentCall.initiatorId
+              }
+            />
+          )}
         </div>
       )}
 
       <div className="flex-1 flex bg-white dark:bg-gray-800">
         {/* Chat List */}
-        <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col hidden md:flex">
+        <div className="w-80 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col">
           <ChatList
             onSelectChat={() => {}}
             onCreateGroupClick={() => setShowCreateGroupModal(true)}

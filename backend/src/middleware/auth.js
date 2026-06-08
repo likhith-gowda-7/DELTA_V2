@@ -11,7 +11,11 @@ export const protectedRoute = asyncHandler((req, res, next) => {
 
   try {
     const decoded = verifyAccessToken(token);
+    // Standardize auth context: provide both `req.userId` (legacy string) and
+    // `req.user` (Mongoose-style object with `_id`) so every controller works
+    // regardless of which convention it uses.
     req.userId = decoded.userId;
+    req.user = { _id: decoded.userId };
     next();
   } catch (error) {
     throw new AppError(error.message || "Invalid token", 401);

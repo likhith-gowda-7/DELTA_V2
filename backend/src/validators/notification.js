@@ -1,4 +1,4 @@
-const z = require("zod");
+import { z } from "zod";
 
 const notificationTypes = [
   "new_message",
@@ -9,7 +9,7 @@ const notificationTypes = [
 ];
 
 // Schema for creating a notification (backend use only)
-const createNotificationSchema = z.object({
+export const createNotificationSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid user ID"),
   type: z.enum(notificationTypes),
   chatId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid chat ID"),
@@ -25,7 +25,7 @@ const createNotificationSchema = z.object({
 });
 
 // Schema for pagination query parameters
-const paginationSchema = z.object({
+export const paginationSchema = z.object({
   page: z
     .string()
     .regex(/^\d+$/, "Page must be a number")
@@ -43,7 +43,7 @@ const paginationSchema = z.object({
 });
 
 // Schema for unread notifications query
-const unreadQuerySchema = z.object({
+export const unreadQuerySchema = z.object({
   limit: z
     .string()
     .regex(/^\d+$/, "Limit must be a number")
@@ -54,13 +54,6 @@ const unreadQuerySchema = z.object({
 });
 
 // Schema for notification ID parameter
-const notificationIdSchema = z.object({
+export const notificationIdSchema = z.object({
   id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid notification ID"),
 });
-
-module.exports = {
-  createNotificationSchema,
-  paginationSchema,
-  unreadQuerySchema,
-  notificationIdSchema,
-};
