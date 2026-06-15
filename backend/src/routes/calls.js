@@ -157,26 +157,6 @@ router.put(
 );
 
 /**
- * GET /api/calls/:id
- * Get call details
- */
-router.get(
-  "/:id",
-  validateRequest(callValidator.callIdSchema, "params"),
-  callController.getCall,
-);
-
-/**
- * GET /api/calls/history
- * Get call history (paginated)
- */
-router.get(
-  "/",
-  validateRequest(callValidator.callHistorySchema, "query"),
-  callController.getCallHistory,
-);
-
-/**
  * GET /api/calls/missed
  * Get missed calls
  */
@@ -193,5 +173,25 @@ router.get("/active", callController.getActiveCalls);
  * Get call statistics
  */
 router.get("/stats", callController.getCallStats);
+
+/**
+ * GET /api/calls/history
+ * Get call history (paginated)
+ */
+router.get(
+  "/",
+  validateRequest(callValidator.callHistorySchema, "query"),
+  callController.getCallHistory,
+);
+
+/**
+ * GET /api/calls/:id
+ * Get call details
+ */
+router.get(
+  "/:id",
+  validateRequest(callValidator.callIdSchema, "params"),
+  callController.getCall,
+);
 
 export default router;

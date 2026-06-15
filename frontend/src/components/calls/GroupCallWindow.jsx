@@ -7,15 +7,15 @@ import {
   VideoOff,
   Share2,
   StopCircle,
-  Record,
+  Circle,
   Users,
   X,
 } from "lucide-react";
-import { useCallStore } from "../store/useCallStore";
-import { useSocketStore } from "../store/useSocketStore";
-import useGroupWebRTC from "../hooks/useGroupWebRTC";
+import { useCallStore } from "../../store/useCallStore";
+import { useSocketStore } from "../../store/useSocketStore";
+import useGroupWebRTC from "../../hooks/useGroupWebRTC";
 import ParticipantGrid from "./ParticipantGrid";
-import AddParticipantModal from "./modals/AddParticipantModal";
+import AddParticipantModal from "../modals/AddParticipantModal";
 
 /**
  * Main component for group call interface
@@ -26,8 +26,6 @@ const GroupCallWindow = ({ callId, participants = [] }) => {
     currentCall,
     isScreenSharing,
     isRecording,
-    audioEnabled,
-    videoEnabled,
     startScreenShare,
     stopScreenShare,
     startRecording,
@@ -52,6 +50,7 @@ const GroupCallWindow = ({ callId, participants = [] }) => {
     getLocalStream,
     initializePeerConnection,
     createOffer,
+    createAnswer,
     setRemoteDescription,
     addIceCandidate,
     toggleAudio,
@@ -153,12 +152,12 @@ const GroupCallWindow = ({ callId, participants = [] }) => {
 
   // Handle audio toggle
   const handleToggleAudio = () => {
-    toggleAudio(!audioEnabled);
+    toggleAudio(!webrtcAudioEnabled);
   };
 
   // Handle video toggle
   const handleToggleVideo = () => {
-    toggleVideo(!videoEnabled);
+    toggleVideo(!webrtcVideoEnabled);
   };
 
   // Handle screen share
@@ -275,26 +274,26 @@ const GroupCallWindow = ({ callId, participants = [] }) => {
         <button
           onClick={handleToggleAudio}
           className={`flex items-center gap-2 rounded-full p-3 transition ${
-            audioEnabled
+            webrtcAudioEnabled
               ? "bg-gray-600 hover:bg-gray-500 text-white"
               : "bg-red-600 hover:bg-red-700 text-white"
           }`}
-          title={audioEnabled ? "Mute" : "Unmute"}
+          title={webrtcAudioEnabled ? "Mute" : "Unmute"}
         >
-          {audioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
+          {webrtcAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
         </button>
 
         {/* Video Toggle */}
         <button
           onClick={handleToggleVideo}
           className={`flex items-center gap-2 rounded-full p-3 transition ${
-            videoEnabled
+            webrtcVideoEnabled
               ? "bg-gray-600 hover:bg-gray-500 text-white"
               : "bg-red-600 hover:bg-red-700 text-white"
           }`}
-          title={videoEnabled ? "Stop Video" : "Start Video"}
+          title={webrtcVideoEnabled ? "Stop Video" : "Start Video"}
         >
-          {videoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+          {webrtcVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
         </button>
 
         {/* Screen Share */}
@@ -320,7 +319,7 @@ const GroupCallWindow = ({ callId, participants = [] }) => {
           }`}
           title={isRecording ? "Stop Recording" : "Start Recording"}
         >
-          {isRecording ? <StopCircle size={24} /> : <Record size={24} />}
+          {isRecording ? <StopCircle size={24} /> : <Circle size={24} />}
         </button>
 
         {/* Add Participant */}

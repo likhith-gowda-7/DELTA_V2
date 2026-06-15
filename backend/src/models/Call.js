@@ -11,7 +11,8 @@ const callSchema = new mongoose.Schema(
     recipientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false, // Not required for group calls (uses participants array)
+      default: null,
       index: true,
     },
     chatId: {
@@ -53,10 +54,6 @@ const callSchema = new mongoose.Schema(
     duration: {
       type: Number,
       default: 0, // in seconds
-    },
-    recordingUrl: {
-      type: String,
-      default: null,
     },
     rejectionReason: {
       type: String,

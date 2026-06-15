@@ -18,6 +18,8 @@ import {
   deleteMessageSchema,
   searchMessagesSchema,
   getMessagesSchema,
+  chatIdParamSchema,
+  messageIdParamSchema,
 } from "../validators/message.js";
 
 const router = express.Router();
@@ -27,20 +29,47 @@ router.use(protectedRoute);
 
 // Message CRUD
 router.post("/", validateRequest(sendMessageSchema), sendMessage);
-router.put("/:messageId", validateRequest(editMessageSchema), editMessage);
-router.delete("/:messageId", deleteMessage);
+router.put(
+  "/:messageId",
+  validateRequest(messageIdParamSchema, "params"),
+  validateRequest(editMessageSchema, "body"),
+  editMessage,
+);
+router.delete(
+  "/:messageId",
+  validateRequest(deleteMessageSchema, "params"),
+  deleteMessage,
+);
 
 // Read receipts - specific routes first to avoid conflicts
-router.put("/:messageId/read", markMessageAsRead);
-router.put("/chat/:chatId/read", markChatAsRead);
-router.get("/chat/:chatId/unread", getUnreadCount);
+router.put(
+  "/:messageId/read",
+  validateRequest(markAsReadSchema, "params"),
+  markMessageAsRead,
+);
+router.put(
+  "/chat/:chatId/read",
+  validateRequest(chatIdParamSchema, "params"),
+  markChatAsRead,
+);
+router.get(
+  "/chat/:chatId/unread",
+  validateRequest(chatIdParamSchema, "params"),
+  getUnreadCount,
+);
 router.get(
   "/search/:chatId",
-  validateRequest(searchMessagesSchema),
+  validateRequest(chatIdParamSchema, "params"),
+  validateRequest(searchMessagesSchema, "query"),
   searchMessages,
 );
 
 // Get messages - general route last
-router.get("/:chatId", validateRequest(getMessagesSchema), getMessages);
+router.get(
+  "/:chatId",
+  validateRequest(chatIdParamSchema, "params"),
+  validateRequest(getMessagesSchema, "query"),
+  getMessages,
+);
 
 export default router;

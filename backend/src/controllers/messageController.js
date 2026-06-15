@@ -28,7 +28,7 @@ export const getMessages = asyncHandler(async (req, res) => {
 // @route   POST /api/messages
 // @access  Protected
 export const sendMessage = asyncHandler(async (req, res) => {
-  const { chatId, content, fileUrl, fileType } = req.body;
+  const { chatId, content, fileUrl, fileType, fileName, fileSize } = req.body;
 
   if (!chatId || !content) {
     throw new AppError("Chat ID and message content are required", 400);
@@ -39,7 +39,9 @@ export const sendMessage = asyncHandler(async (req, res) => {
     req.userId,
     content,
     fileUrl,
-    fileType
+    fileType,
+    fileName,
+    fileSize,
   );
 
   res.status(201).json({

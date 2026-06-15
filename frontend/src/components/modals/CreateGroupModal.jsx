@@ -26,7 +26,7 @@ export default function CreateGroupModal({ isOpen, onClose, onGroupCreated }) {
     setError("");
 
     try {
-      const response = await apiClient.post("/api/chats/group", {
+      const response = await apiClient.post("/chats/group", {
         name: groupName,
         userIds: selectedUsers,
         description: description,

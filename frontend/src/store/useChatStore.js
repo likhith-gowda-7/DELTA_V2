@@ -24,7 +24,7 @@ export const useChatStore = create((set) => ({
   fetchChats: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.get("/api/chats");
+      const response = await apiClient.get("/chats");
       set({ chats: response.data.data.chats });
     } catch (error) {
       set({ error: error.response?.data?.message || "Failed to fetch chats" });
@@ -36,7 +36,7 @@ export const useChatStore = create((set) => ({
   // Create or access 1-to-1 chat
   createOrAccessChat: async (userId) => {
     try {
-      const response = await apiClient.post("/api/chats", { userId });
+      const response = await apiClient.post("/chats", { userId });
       const newChat = response.data.data;
 
       set((state) => {
@@ -64,7 +64,7 @@ export const useChatStore = create((set) => ({
   // Create group chat
   createGroupChat: async (name, userIds, description = "") => {
     try {
-      const response = await apiClient.post("/api/chats/group", {
+      const response = await apiClient.post("/chats/group", {
         name,
         userIds,
         description,
@@ -87,7 +87,7 @@ export const useChatStore = create((set) => ({
   renameChat: async (chatId, newName) => {
     try {
       const response = await apiClient.put(
-        `/api/chats/${chatId}/rename`,
+        `/chats/${chatId}/rename`,
         { name: newName }
       );
       const updatedChat = response.data.data;
@@ -110,7 +110,7 @@ export const useChatStore = create((set) => ({
   addMemberToChat: async (chatId, userId) => {
     try {
       const response = await apiClient.put(
-        `/api/chats/${chatId}/members`,
+        `/chats/${chatId}/members`,
         { userId }
       );
       const updatedChat = response.data.data;
@@ -133,7 +133,7 @@ export const useChatStore = create((set) => ({
   removeMemberFromChat: async (chatId, userId) => {
     try {
       const response = await apiClient.delete(
-        `/api/chats/${chatId}/members/${userId}`
+        `/chats/${chatId}/members/${userId}`
       );
       const updatedChat = response.data.data;
 
@@ -157,7 +157,7 @@ export const useChatStore = create((set) => ({
   promoteToAdmin: async (chatId, userId) => {
     try {
       const response = await apiClient.put(
-        `/api/chats/${chatId}/admin/${userId}`
+        `/chats/${chatId}/admin/${userId}`
       );
       const updatedChat = response.data.data;
 
@@ -178,7 +178,7 @@ export const useChatStore = create((set) => ({
   // Delete chat
   deleteChat: async (chatId) => {
     try {
-      await apiClient.delete(`/api/chats/${chatId}`);
+      await apiClient.delete(`/chats/${chatId}`);
 
       set((state) => ({
         chats: state.chats.filter((c) => c._id !== chatId),
@@ -196,10 +196,13 @@ export const useChatStore = create((set) => ({
       messages: [...state.messages, message],
     })),
 
-  updateMessage: (messageId, updatedMessage) =>
+  // H3 FIX: Merges updates with existing message instead of replacing.
+  // Callers can pass partial updates like { content, editedAt } without
+  // losing other fields (sender, readBy, etc.).
+  updateMessage: (messageId, updates) =>
     set((state) => ({
       messages: state.messages.map((m) =>
-        m._id === messageId ? updatedMessage : m
+        m._id === messageId ? { ...m, ...updates } : m
       ),
     })),
 

@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import logger from "../lib/logger.js";
 import { RTC_CONFIG } from "../lib/callConfig.js";
+
+// Dev-only logger — stripped from production builds by tree-shaking
+const log = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log("[WebRTC]", ...args);
+  }
+};
+
+const warn = (...args) => {
+  if (import.meta.env.DEV) {
+    console.warn("[WebRTC]", ...args);
+  }
+};
 
 /**
  * Custom hook for managing WebRTC peer connections.
@@ -9,8 +21,13 @@ import { RTC_CONFIG } from "../lib/callConfig.js";
  * ICE candidates (which bypasses React and the stores), this hook accepts a
  * `socket` ref. When set, ICE candidates are emitted directly to the peer
  * via socket, and the hook subscribes to incoming `webrtc_*` events.
+ *
+ * @param {string} callId - The ID of the current call
+ * @param {React.MutableRefObject|null} socket - Socket.IO ref for signaling
+ * @param {boolean} isInitiator - Whether this peer initiated the call
+ * @param {string|null} otherUserId - The ID of the remote peer (H5 fix)
  */
-export const useWebRTC = (callId, socket = null, isInitiator = false) => {
+export const useWebRTC = (callId, socket = null, isInitiator = false, otherUserId = null) => {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
@@ -39,7 +56,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
     } catch (err) {
       const errorMsg = `Failed to get media: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -62,30 +79,32 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
 
       // Handle remote stream
       peerConnection.ontrack = (event) => {
-        console.log("Remote track received:", event.track.kind);
+        log("Remote track received:", event.track.kind);
         remoteStreamRef.current = event.streams[0];
         setRemoteStream(event.streams[0]);
       };
 
       // Handle connection state changes
       peerConnection.onconnectionstatechange = () => {
-        console.log("Connection state:", peerConnection.connectionState);
+        log("Connection state:", peerConnection.connectionState);
         setConnectionState(peerConnection.connectionState);
       };
 
       // Handle ICE connection state changes
       peerConnection.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", peerConnection.iceConnectionState);
+        log("ICE connection state:", peerConnection.iceConnectionState);
         setIceConnectionState(peerConnection.iceConnectionState);
       };
 
-      // Handle ICE candidates — emit to remote peer via socket
+      // H5 FIX: Handle ICE candidates — emit to remote peer via socket
+      // Now includes `otherUserId` so the backend can relay to the correct peer
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("ICE candidate:", event.candidate);
-          if (socket?.current) {
+          log("ICE candidate generated");
+          if (socket?.current && otherUserId) {
             socket.current.emit("webrtc_ice_candidate", {
               callId,
+              otherUserId,
               candidate: event.candidate,
             });
           }
@@ -96,7 +115,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
     } catch (err) {
       const errorMsg = `Failed to initialize peer connection: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -116,7 +135,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
     } catch (err) {
       const errorMsg = `Failed to create offer: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -136,7 +155,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
     } catch (err) {
       const errorMsg = `Failed to create answer: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -156,7 +175,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
     } catch (err) {
       const errorMsg = `Failed to set remote description: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -176,7 +195,7 @@ export const useWebRTC = (callId, socket = null, isInitiator = false) => {
         );
       }
     } catch (err) {
-      console.warn("Failed to add ICE candidate:", err.message);
+      warn("Failed to add ICE candidate:", err.message);
       // Don't throw - ICE candidate errors shouldn't break the connection
     }
   };

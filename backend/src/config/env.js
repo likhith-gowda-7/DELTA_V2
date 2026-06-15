@@ -30,7 +30,6 @@ const validateEnv = () => {
     for (const key of Object.keys(process.env)) {
       const value = String(process.env[key] || "");
       if (devDefaults.some((d) => value.includes(d))) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[env] WARNING: ${key} appears to contain a placeholder value in production.`,
         );
@@ -48,7 +47,7 @@ const config = {
   JWT_ACCESS_EXPIRE: process.env.JWT_ACCESS_EXPIRE || "15m",
   JWT_REFRESH_EXPIRE: process.env.JWT_REFRESH_EXPIRE || "7d",
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
-  CLOUDINARY_NAME: process.env.CLOUDINARY_NAME,
+  CLOUDINARY_NAME: process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   LOG_LEVEL: process.env.LOG_LEVEL || "info",

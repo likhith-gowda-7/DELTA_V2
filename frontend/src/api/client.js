@@ -22,6 +22,24 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// ---------- Token refresh mutex ----------
+// Prevents multiple concurrent 401s from triggering parallel refresh calls.
+// All queued requests wait for the single refresh to complete, then retry with
+// the new token.
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Response interceptor for token refresh
 apiClient.interceptors.response.use(
   (response) => response,
@@ -34,7 +52,18 @@ apiClient.interceptors.response.use(
       !originalRequest._retry &&
       originalRequest.url !== "/auth/refresh-token"
     ) {
+      // If a refresh is already in flight, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         const response = await axios.post(
@@ -47,13 +76,20 @@ apiClient.interceptors.response.use(
         localStorage.setItem("accessToken", accessToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        // Resolve all queued requests with the new token
+        processQueue(null, accessToken);
+
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed — reject all queued requests and redirect to login
+        processQueue(refreshError, null);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
         window.location.href = "/";
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -61,4 +97,5 @@ apiClient.interceptors.response.use(
   },
 );
 
+export { apiClient };
 export default apiClient;

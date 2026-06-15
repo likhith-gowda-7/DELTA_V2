@@ -4,7 +4,15 @@ import { AppError } from "../lib/AppError.js";
 import logger from "../lib/logger.js";
 
 export const messageService = {
-  async sendMessage(chatId, senderId, content, fileUrl = null, fileType = null) {
+  async sendMessage(
+    chatId,
+    senderId,
+    content,
+    fileUrl = null,
+    fileType = null,
+    fileName = null,
+    fileSize = null,
+  ) {
     // Verify chat exists and user is a member
     const chat = await Chat.findById(chatId);
     if (!chat) {
@@ -22,6 +30,8 @@ export const messageService = {
       content,
       fileUrl,
       fileType,
+      fileName,
+      fileSize,
       readBy: [{ user: senderId }], // Sender has read their own message
     });
 
@@ -132,19 +142,22 @@ export const messageService = {
   },
 
   async markChatAsRead(chatId, userId) {
-    // Mark all unread messages in chat as read by this user
-    const messages = await Message.find({
-      chat: chatId,
-      isDeleted: false,
-      "readBy.user": { $ne: userId }, // Messages not read by this user
-    });
+    // Mark all unread messages in chat as read by this user.
+    // Uses a single updateMany with $addToSet instead of N individual saves.
+    const result = await Message.updateMany(
+      {
+        chat: chatId,
+        isDeleted: false,
+        "readBy.user": { $ne: userId },
+      },
+      {
+        $addToSet: {
+          readBy: { user: userId, readAt: new Date() },
+        },
+      },
+    );
 
-    for (const message of messages) {
-      message.readBy.push({ user: userId, readAt: new Date() });
-      await message.save();
-    }
-
-    return { message: `Marked ${messages.length} messages as read` };
+    return { message: `Marked ${result.modifiedCount} messages as read` };
   },
 
   async getUnreadCount(chatId, userId) {
@@ -164,10 +177,13 @@ export const messageService = {
       throw new AppError("Unauthorized", 403);
     }
 
+    // Escape regex special characters to prevent ReDoS
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     const messages = await Message.find({
       chat: chatId,
       isDeleted: false,
-      content: { $regex: keyword, $options: "i" },
+      content: { $regex: escapedKeyword, $options: "i" },
     })
       .populate("sender", "_id name avatar")
       .sort({ createdAt: -1 })

@@ -3,6 +3,7 @@ import logger from "../lib/logger.js";
 import { messageService } from "../services/message.service.js";
 import { recordMetric } from "../services/callMetrics.service.js";
 import { AppError } from "../lib/AppError.js";
+import User from "../models/User.js";
 
 // Socket.IO authentication middleware
 export const socketAuthMiddleware = (socket, next) => {
@@ -37,6 +38,16 @@ export const setupPresenceEvents = (io, socket) => {
     socket.join(socket.userId);
     logger.info(`User ${socket.userId} connected via socket`);
 
+    // C4 FIX: Persist online status to database
+    try {
+      await User.findByIdAndUpdate(socket.userId, {
+        isOnline: true,
+        lastSeen: new Date(),
+      });
+    } catch (err) {
+      logger.warn(`Failed to update online status for ${socket.userId}: ${err.message}`);
+    }
+
     // Broadcast user is online to all connected clients
     io.emit("user_online", {
       userId: socket.userId,
@@ -53,24 +64,49 @@ export const setupPresenceEvents = (io, socket) => {
   });
 
   // Disconnect event (sets offline status)
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     if (!socket.userId) return;
 
     logger.info(`User ${socket.userId} disconnected`);
 
-    // Broadcast user is offline to all connected clients
-    io.emit("user_offline", {
-      userId: socket.userId,
-      isOnline: false,
-      timestamp: new Date(),
-    });
+    // C4 FIX: Check if user has other active sockets before marking offline
+    const userSockets = Array.from(io.sockets.sockets.values())
+      .filter((s) => s.userId === socket.userId && s.id !== socket.id);
+
+    if (userSockets.length === 0) {
+      // No other sockets — user is truly offline
+      try {
+        await User.findByIdAndUpdate(socket.userId, {
+          isOnline: false,
+          lastSeen: new Date(),
+        });
+      } catch (err) {
+        logger.warn(`Failed to update offline status for ${socket.userId}: ${err.message}`);
+      }
+
+      // Broadcast user is offline to all connected clients
+      io.emit("user_offline", {
+        userId: socket.userId,
+        isOnline: false,
+        timestamp: new Date(),
+      });
+    }
   });
 
   // User explicitly goes offline (for logout, etc.)
-  socket.on("user_offline", () => {
+  socket.on("user_offline", async () => {
     if (!socket.userId) return;
 
     logger.info(`User ${socket.userId} marked as offline`);
+
+    try {
+      await User.findByIdAndUpdate(socket.userId, {
+        isOnline: false,
+        lastSeen: new Date(),
+      });
+    } catch (err) {
+      logger.warn(`Failed to update offline status for ${socket.userId}: ${err.message}`);
+    }
 
     io.emit("user_offline", {
       userId: socket.userId,
@@ -135,15 +171,14 @@ export const setupChatEvents = (io, socket) => {
   });
 
   // Send message in real-time. Persist before broadcast so messages
-  // sent only over the socket survive a page reload. Mirrors the
-  // `POST /api/messages` HTTP path.
+  // sent only over the socket survive a page reload.
   socket.on("send_message", async (messageData) => {
     if (!socket.userId || !messageData.chatId || !messageData.content) {
       logger.warn(`send_message event invalid: ${socket.id}`);
       return;
     }
 
-    const { chatId, content, fileUrl, fileType } = messageData;
+    const { chatId, content, fileUrl, fileType, fileName, fileSize } = messageData;
 
     try {
       const message = await messageService.sendMessage(
@@ -152,6 +187,8 @@ export const setupChatEvents = (io, socket) => {
         content,
         fileUrl || null,
         fileType || null,
+        fileName || null,
+        fileSize || null,
       );
 
       logger.info(`Message sent in chat ${chatId} by user ${socket.userId}`);
@@ -171,40 +208,70 @@ export const setupChatEvents = (io, socket) => {
     }
   });
 
-  // Message edited
-  socket.on("edit_message", (messageData) => {
+  // H1 FIX: Message edited — now persists to DB before broadcasting
+  socket.on("edit_message", async (messageData) => {
     if (!socket.userId || !messageData.chatId || !messageData.messageId) return;
 
-    const { chatId, messageId, content, editedAt } = messageData;
+    const { chatId, messageId, content } = messageData;
 
-    logger.info(
-      `Message ${messageId} edited by user ${socket.userId} in chat ${chatId}`,
-    );
+    try {
+      const updatedMessage = await messageService.editMessage(
+        messageId,
+        content,
+        socket.userId,
+      );
 
-    // Broadcast to all users in the chat room
-    io.to(chatId).emit("message_edited", {
-      messageId,
-      content,
-      editedAt,
-      chatId,
-    });
+      logger.info(
+        `Message ${messageId} edited by user ${socket.userId} in chat ${chatId}`,
+      );
+
+      // Broadcast the persisted update to all users in the chat room
+      io.to(chatId).emit("message_edited", {
+        messageId,
+        content: updatedMessage.content,
+        editedAt: updatedMessage.editedAt,
+        chatId,
+      });
+    } catch (err) {
+      logger.error(
+        `edit_message failed for ${socket.userId}: ${err.message}`,
+      );
+      socket.emit("edit_message_error", {
+        messageId,
+        chatId,
+        message: err instanceof AppError ? err.message : "Failed to edit message",
+      });
+    }
   });
 
-  // Message deleted
-  socket.on("delete_message", (messageData) => {
+  // H2 FIX: Message deleted — now persists soft-delete to DB before broadcasting
+  socket.on("delete_message", async (messageData) => {
     if (!socket.userId || !messageData.chatId || !messageData.messageId) return;
 
     const { chatId, messageId } = messageData;
 
-    logger.info(
-      `Message ${messageId} deleted by user ${socket.userId} in chat ${chatId}`,
-    );
+    try {
+      await messageService.deleteMessage(messageId, socket.userId);
 
-    // Broadcast to all users in the chat room
-    io.to(chatId).emit("message_deleted", {
-      messageId,
-      chatId,
-    });
+      logger.info(
+        `Message ${messageId} deleted by user ${socket.userId} in chat ${chatId}`,
+      );
+
+      // Broadcast to all users in the chat room
+      io.to(chatId).emit("message_deleted", {
+        messageId,
+        chatId,
+      });
+    } catch (err) {
+      logger.error(
+        `delete_message failed for ${socket.userId}: ${err.message}`,
+      );
+      socket.emit("delete_message_error", {
+        messageId,
+        chatId,
+        message: err instanceof AppError ? err.message : "Failed to delete message",
+      });
+    }
   });
 
   // Typing indicator
@@ -333,7 +400,6 @@ export const setupNotificationEvents = (io, socket) => {
       return;
 
     // This event is primarily for checking via HTTP API
-    // But we can emit back unread count
     logger.debug(`Unread notifications check for user ${userId}`);
   });
 
@@ -345,7 +411,6 @@ export const setupNotificationEvents = (io, socket) => {
       `Notification ${notificationId} marked as read by user ${socket.userId}`,
     );
 
-    // Could broadcast to connected clients about read status
     socket.emit("notification_marked_read", {
       notificationId,
       readAt: new Date(),
@@ -627,8 +692,7 @@ export const setupGroupCallEvents = (io, socket) => {
   });
 
   // Send metrics/analytics — persists a quality sample for the
-  // sender of this event. Frontend fires this on
-  // GROUP_CALL_LIMITS.QUALITY_REPORT_INTERVAL_MS.
+  // sender of this event.
   socket.on("call_metrics", async (data) => {
     if (!socket.userId) return;
 

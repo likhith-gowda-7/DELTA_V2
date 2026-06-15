@@ -19,6 +19,22 @@ export const errorHandler = (err, req, res, next) => {
     err.message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
   }
 
+  // Mongoose validation error
+  if (err.name === "ValidationError" && err.errors) {
+    err.statusCode = 400;
+    const messages = Object.values(err.errors).map((e) => e.message);
+    err.message = messages.join(", ");
+  }
+
+  // Zod validation error — extract field-level messages for UX
+  if (err.name === "ZodError" || (err.issues && Array.isArray(err.issues))) {
+    err.statusCode = 400;
+    const fieldErrors = err.issues.map(
+      (issue) => `${issue.path.join(".")}: ${issue.message}`
+    );
+    err.message = fieldErrors.join("; ");
+  }
+
   // JWT errors
   if (err.name === "JsonWebTokenError") {
     err.statusCode = 401;

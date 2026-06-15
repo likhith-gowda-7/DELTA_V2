@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useSocketStore } from "../store/useSocketStore";
 import { useChatStore } from "../store/useChatStore";
-import { initSocket, getSocket, disconnectSocket } from "../lib/socket.io";
+import { initSocket, disconnectSocket, reconnectWithNewToken } from "../lib/socket.io";
 
-// Simple logger for frontend
+// Dev-only logger
 const log = (msg) => {
   if (import.meta.env.DEV) {
     console.log(`[Socket] ${msg}`);
@@ -22,8 +22,37 @@ export const useSocket = () => {
     removeOnlineUser,
   } = useSocketStore();
 
-  const { addMessage, updateMessage, removeMessage, selectedChat } =
-    useChatStore();
+  const { addMessage, updateMessage, removeMessage } = useChatStore();
+
+  // H4 FIX: Use a ref for selectedChat so event handlers always read the
+  // current value, not the stale one captured when the effect registered.
+  const selectedChatRef = useRef(null);
+  const selectedChat = useChatStore((state) => state.selectedChat);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // Track previous token to detect refreshes (C3)
+  const prevTokenRef = useRef(accessToken);
+
+  // C3 FIX: When the access token changes (after a refresh), update the
+  // socket's auth token and reconnect.
+  useEffect(() => {
+    if (
+      accessToken &&
+      prevTokenRef.current &&
+      accessToken !== prevTokenRef.current &&
+      socket
+    ) {
+      log("Access token refreshed — reconnecting socket with new token");
+      reconnectWithNewToken(accessToken);
+    }
+    prevTokenRef.current = accessToken;
+  }, [accessToken, socket]);
+
+  // M8 FIX: Use a ref to track whether we've already created the socket
+  // so the effect doesn't re-run when setSocket triggers a state change.
+  const socketInitRef = useRef(false);
 
   useEffect(() => {
     if (!user || !accessToken) {
@@ -32,124 +61,161 @@ export const useSocket = () => {
         disconnectSocket();
         setSocket(null);
         setConnected(false);
+        socketInitRef.current = false;
       }
       return;
     }
 
-    // Connect socket if not already connected
-    if (!socket) {
-      try {
-        const newSocket = initSocket();
+    // Prevent duplicate socket creation
+    if (socketInitRef.current || socket) {
+      return;
+    }
 
-        // Authenticate socket
-        newSocket.auth = {
-          token: accessToken,
-        };
+    try {
+      socketInitRef.current = true;
+      const newSocket = initSocket();
 
-        newSocket.connect();
+      // Authenticate socket
+      newSocket.auth = {
+        token: accessToken,
+      };
 
-        // Socket event listeners
-        newSocket.on("connect", () => {
-          log("Socket connected");
-          setConnected(true);
+      newSocket.connect();
 
-          // Send setup event with user data
-          newSocket.emit("setup", { userId: user._id, name: user.name });
-        });
+      // Socket event listeners
+      newSocket.on("connect", () => {
+        log("Socket connected");
+        setConnected(true);
 
-        newSocket.on("disconnect", () => {
-          log("Socket disconnected");
-          setConnected(false);
-        });
+        // Send setup event with user data
+        newSocket.emit("setup", { userId: user._id, name: user.name });
+      });
 
-        newSocket.on("connect_error", (error) => {
-          log(`Connection error: ${error.message}`);
-        });
+      newSocket.on("disconnect", () => {
+        log("Socket disconnected");
+        setConnected(false);
+      });
 
-        // Presence events
-        newSocket.on("online_users", (users) => {
-          log(`Received online users: ${users.length}`);
-          setOnlineUsers(users);
-        });
+      newSocket.on("connect_error", (error) => {
+        log(`Connection error: ${error.message}`);
+      });
 
-        newSocket.on("user_online", ({ userId }) => {
-          log(`User online: ${userId}`);
-          addOnlineUser(userId);
-        });
+      // Presence events
+      newSocket.on("online_users", (users) => {
+        log(`Received online users: ${users.length}`);
+        setOnlineUsers(users);
+      });
 
-        newSocket.on("user_offline", ({ userId }) => {
-          log(`User offline: ${userId}`);
-          removeOnlineUser(userId);
-        });
+      newSocket.on("user_online", ({ userId }) => {
+        log(`User online: ${userId}`);
+        addOnlineUser(userId);
+      });
 
-        // Chat room events
-        newSocket.on("receive_message", (message) => {
-          log(`Message received in chat: ${message.chatId}`);
-          // Only add if viewing this chat
-          if (selectedChat?._id === message.chatId) {
-            addMessage(message);
-          }
-        });
+      newSocket.on("user_offline", ({ userId }) => {
+        log(`User offline: ${userId}`);
+        removeOnlineUser(userId);
+      });
 
-        newSocket.on("message_edited", (messageData) => {
-          log(`Message edited: ${messageData.messageId}`);
-          if (selectedChat?._id === messageData.chatId) {
-            updateMessage(messageData.messageId, {
-              content: messageData.content,
-              editedAt: messageData.editedAt,
-            });
-          }
-        });
+      // Chat room events — use ref for selectedChat to avoid stale closure
+      newSocket.on("receive_message", (message) => {
+        log(`Message received in chat: ${message.chatId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === message.chatId) {
+          addMessage(message);
+        }
+      });
 
-        newSocket.on("message_deleted", (messageData) => {
-          log(`Message deleted: ${messageData.messageId}`);
-          if (selectedChat?._id === messageData.chatId) {
-            removeMessage(messageData.messageId);
-          }
-        });
+      newSocket.on("message_edited", (messageData) => {
+        log(`Message edited: ${messageData.messageId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === messageData.chatId) {
+          updateMessage(messageData.messageId, {
+            content: messageData.content,
+            editedAt: messageData.editedAt,
+          });
+        }
+      });
 
-        newSocket.on("user_typing", (typingData) => {
-          log(`User typing in chat: ${typingData.userId}`);
-          // This can be used to show typing indicators
-          // Store can be enhanced in Phase 5 for typing indicators
-        });
+      newSocket.on("message_deleted", (messageData) => {
+        log(`Message deleted: ${messageData.messageId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === messageData.chatId) {
+          removeMessage(messageData.messageId);
+        }
+      });
 
-        newSocket.on("user_stopped_typing", (typingData) => {
-          log(`User stopped typing: ${typingData.userId}`);
-          // Clear typing indicator
-        });
+      // M3 FIX: Typing indicators — dispatch to store for UI rendering
+      newSocket.on("user_typing", (typingData) => {
+        log(`User typing: ${typingData.userId} in chat: ${typingData.chatId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === typingData.chatId) {
+          useChatStore.setState((state) => {
+            const typingUsers = state.typingUsers || {};
+            return {
+              typingUsers: {
+                ...typingUsers,
+                [typingData.chatId]: {
+                  ...(typingUsers[typingData.chatId] || {}),
+                  [typingData.userId]: Date.now(),
+                },
+              },
+            };
+          });
+        }
+      });
 
-        newSocket.on("message_read", (readData) => {
-          log(`Message marked as read: ${readData.messageId}`);
-          if (selectedChat?._id === readData.chatId) {
-            // Update read receipts if needed
-          }
-        });
+      newSocket.on("user_stopped_typing", (typingData) => {
+        log(`User stopped typing: ${typingData.userId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === typingData.chatId) {
+          useChatStore.setState((state) => {
+            const typingUsers = { ...(state.typingUsers || {}) };
+            if (typingUsers[typingData.chatId]) {
+              const chatTyping = { ...typingUsers[typingData.chatId] };
+              delete chatTyping[typingData.userId];
+              typingUsers[typingData.chatId] = chatTyping;
+            }
+            return { typingUsers };
+          });
+        }
+      });
 
-        newSocket.on("user_joined_chat", (joinData) => {
-          log(`User joined chat: ${joinData.userId}`);
-        });
+      // M4 FIX: Read receipts — update message readBy state
+      newSocket.on("message_read", (readData) => {
+        log(`Message ${readData.messageId} read by ${readData.userId}`);
+        const currentChat = selectedChatRef.current;
+        if (currentChat?._id === readData.chatId) {
+          updateMessage(readData.messageId, {
+            readBy: readData.readBy || undefined,
+          });
+        }
+      });
 
-        newSocket.on("user_left_chat", (leaveData) => {
-          log(`User left chat: ${leaveData.userId}`);
-        });
+      newSocket.on("user_joined_chat", (joinData) => {
+        log(`User joined chat: ${joinData.userId}`);
+      });
 
-        newSocket.on("online_users_in_chat", (data) => {
-          log(`Online users in chat: ${data.onlineUsers.length}`);
-          // Can be used to show who's active in this specific chat
-        });
+      newSocket.on("user_left_chat", (leaveData) => {
+        log(`User left chat: ${leaveData.userId}`);
+      });
 
-        setSocket(newSocket);
-      } catch (error) {
-        log(`Failed to initialize socket: ${error.message}`);
-      }
+      newSocket.on("online_users_in_chat", (data) => {
+        log(`Online users in chat: ${data.onlineUsers.length}`);
+      });
+
+      setSocket(newSocket);
+    } catch (error) {
+      log(`Failed to initialize socket: ${error.message}`);
+      socketInitRef.current = false;
     }
 
     return () => {
       // Cleanup on unmount is optional - keep connection alive
       // Only disconnect if user logs out (handled in if block above)
     };
-  }, [user, accessToken, socket]);
+    // M8 FIX: Only depend on user and accessToken — NOT socket,
+    // which would cause re-runs when setSocket updates state.
+  }, [user, accessToken]);
 
   return socket;
 };

@@ -3,25 +3,25 @@ import { apiClient } from "./client";
 export const chatsAPI = {
   // Get all chats for current user
   getChats: async () => {
-    const response = await apiClient.get("/api/chats");
+    const response = await apiClient.get("/chats");
     return response.data.data;
   },
 
   // Get single chat
   getChat: async (chatId) => {
-    const response = await apiClient.get(`/api/chats/${chatId}`);
+    const response = await apiClient.get(`/chats/${chatId}`);
     return response.data.data;
   },
 
   // Create or access 1-to-1 chat
   createOrAccessChat: async (userId) => {
-    const response = await apiClient.post("/api/chats", { userId });
+    const response = await apiClient.post("/chats", { userId });
     return response.data.data;
   },
 
   // Create group chat
   createGroupChat: async (name, userIds, description = "") => {
-    const response = await apiClient.post("/api/chats/group", {
+    const response = await apiClient.post("/chats/group", {
       name,
       userIds,
       description,
@@ -31,7 +31,7 @@ export const chatsAPI = {
 
   // Rename group chat
   renameChat: async (chatId, name) => {
-    const response = await apiClient.put(`/api/chats/${chatId}/rename`, {
+    const response = await apiClient.put(`/chats/${chatId}/rename`, {
       name,
     });
     return response.data.data;
@@ -39,7 +39,7 @@ export const chatsAPI = {
 
   // Add member to group
   addMember: async (chatId, userId) => {
-    const response = await apiClient.put(`/api/chats/${chatId}/members`, {
+    const response = await apiClient.put(`/chats/${chatId}/members`, {
       userId,
     });
     return response.data.data;
@@ -47,19 +47,19 @@ export const chatsAPI = {
 
   // Remove member from group
   removeMember: async (chatId, userId) => {
-    const response = await apiClient.delete(`/api/chats/${chatId}/members/${userId}`);
+    const response = await apiClient.delete(`/chats/${chatId}/members/${userId}`);
     return response.data.data;
   },
 
   // Promote user to admin
   promoteToAdmin: async (chatId, userId) => {
-    const response = await apiClient.put(`/api/chats/${chatId}/admin/${userId}`);
+    const response = await apiClient.put(`/chats/${chatId}/admin/${userId}`);
     return response.data.data;
   },
 
   // Delete chat
   deleteChat: async (chatId) => {
-    const response = await apiClient.delete(`/api/chats/${chatId}`);
+    const response = await apiClient.delete(`/chats/${chatId}`);
     return response.data;
   },
 };

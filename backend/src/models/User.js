@@ -50,15 +50,7 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      index: true, // For pagination
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
+    // M5 FIX: Removed manual createdAt/updatedAt — managed by timestamps: true
   },
   {
     timestamps: true,
@@ -94,8 +86,7 @@ userSchema.methods.toJSON = function () {
   return user;
 };
 
-// Index for email queries
-userSchema.index({ email: 1 });
+// L2 FIX: Removed duplicate email index — already created by unique: true
 // Compound index for presence queries (for online status)
 userSchema.index({ isOnline: 1, lastSeen: -1 });
 

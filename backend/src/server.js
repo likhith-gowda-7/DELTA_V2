@@ -1,13 +1,14 @@
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import cookieParser from "cookie-parser";
+import { config, validateEnv } from "./config/env.js";
 import connectDB from "./config/database.js";
 import logger from "./lib/logger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
-import { asyncHandler } from "./lib/asyncHandler.js";
+import { apiLimiter } from "./middleware/rateLimit.js";
 import healthRoutes from "./routes/health.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
@@ -25,20 +26,11 @@ import {
   setupGroupCallEvents,
 } from "./socket/middleware.js";
 
-// Load environment variables
-dotenv.config();
-
-// Validate required env vars
-const requiredEnvVars = [
-  "MONGODB_URI",
-  "JWT_ACCESS_SECRET",
-  "JWT_REFRESH_SECRET",
-];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    logger.error(`Missing required environment variable: ${envVar}`);
-    process.exit(1);
-  }
+try {
+  validateEnv();
+} catch (error) {
+  logger.error(error.message);
+  process.exit(1);
 }
 
 // Initialize Express app
@@ -48,7 +40,7 @@ const httpServer = createServer(app);
 // Initialize Socket.IO
 export const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: config.FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -56,18 +48,23 @@ export const io = new SocketIOServer(httpServer, {
 });
 
 // Middleware
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: config.FRONTEND_URL,
     credentials: true,
   }),
 );
 
 // Routes
 app.use("/api/health", healthRoutes);
+
+// M1 FIX: Apply general API rate limiter to all routes below.
+// Auth routes have a stricter authLimiter applied at the route level.
+app.use("/api", apiLimiter);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chats", chatRoutes);
@@ -108,14 +105,14 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Database connection and server start
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT;
 
 const startServer = async () => {
   try {
     await connectDB();
     httpServer.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+      logger.info(`Environment: ${config.NODE_ENV}`);
     });
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);

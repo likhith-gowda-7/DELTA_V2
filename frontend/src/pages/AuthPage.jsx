@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/useAuthStore";
-import LoginForm from "../auth/LoginForm";
-import SignupForm from "../auth/SignupForm";
+import { useAuthStore } from "../store/useAuthStore";
+import LoginForm from "../components/auth/LoginForm";
+import SignupForm from "../components/auth/SignupForm";
 import { MessageCircle, LogIn, UserPlus } from "lucide-react";
-import { cn } from "../../lib/cn";
+import { cn } from "../lib/cn";
 
 export default function AuthPage() {
   const navigate = useNavigate();

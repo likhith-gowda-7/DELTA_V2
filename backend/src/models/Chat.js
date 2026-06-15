@@ -31,7 +31,8 @@ const chatSchema = new mongoose.Schema(
     latestMessageTime: {
       type: Date,
       default: null,
-      index: -1, // For sorting chats by latest message
+      // L3 FIX: Proper index declaration (was using -1 as value which is invalid)
+      index: true,
     },
     picture: {
       type: String, // Cloudinary URL for group avatar
@@ -41,14 +42,6 @@ const chatSchema = new mongoose.Schema(
       type: String,
       maxlength: [500, "Description cannot exceed 500 characters"],
       default: "",
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
     },
   },
   {
@@ -83,7 +76,7 @@ chatSchema.pre("save", async function (next) {
 
 // Compound indexes for efficient queries
 chatSchema.index({ users: 1, isGroupChat: 1 });
-chatSchema.index({ latestMessageTime: -1 }); // For sorting
+chatSchema.index({ latestMessageTime: -1 }); // For sorting chats by recent activity
 chatSchema.index({ groupAdmins: 1 }); // For admin queries
 
 // Return only necessary fields by default

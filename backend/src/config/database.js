@@ -1,13 +1,12 @@
 import mongoose from "mongoose";
 import logger from "../lib/logger.js";
+import config from "./env.js";
 
 const connectDB = async () => {
   try {
-    if (!process.env.MONGODB_URI) {
-      throw new Error("MONGODB_URI is not defined in environment variables");
-    }
-
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    // H9 FIX: Removed redundant MONGODB_URI check — already validated by
+    // validateEnv() at startup. Uses centralized config instead of process.env.
+    const conn = await mongoose.connect(config.MONGODB_URI);
 
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;

@@ -1,4 +1,4 @@
-// Socket.IO utility functions (will be extended in Phase 3)
+// Socket.IO utility functions
 import io from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
@@ -20,6 +20,19 @@ export const initSocket = () => {
 };
 
 export const getSocket = () => socket;
+
+/**
+ * C3 FIX: Update the auth token on a live socket and force a reconnect.
+ * Called after the HTTP interceptor refreshes the access token so the
+ * socket doesn't keep using a stale/expired token.
+ */
+export const reconnectWithNewToken = (newToken) => {
+  if (socket) {
+    socket.auth = { token: newToken };
+    // Disconnect and reconnect with the new token
+    socket.disconnect().connect();
+  }
+};
 
 export const disconnectSocket = () => {
   if (socket) {

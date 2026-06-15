@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { useAuthStore } from "../../store/useAuthStore";
-import { useChatStore } from "../../store/useChatStore";
-import { useSocketStore } from "../../store/useSocketStore";
-import { useCallStore } from "../../store/useCallStore";
-import MainLayout from "../layouts/MainLayout";
-import ChatList from "../chat/ChatList";
-import SingleChat from "../chat/SingleChat";
-import CreateGroupModal from "../modals/CreateGroupModal";
-import UpdateGroupModal from "../modals/UpdateGroupModal";
-import CallNotification from "../calls/CallNotification";
-import CallWindow from "../calls/CallWindow";
-import GroupCallWindow from "../calls/GroupCallWindow";
+import { useAuthStore } from "../store/useAuthStore";
+import { useChatStore } from "../store/useChatStore";
+import { useSocketStore } from "../store/useSocketStore";
+import { useCallStore } from "../store/useCallStore";
+import MainLayout from "../components/layouts/MainLayout";
+import ChatList from "../components/chat/ChatList";
+import SingleChat from "../components/chat/SingleChat";
+import CreateGroupModal from "../components/modals/CreateGroupModal";
+import UpdateGroupModal from "../components/modals/UpdateGroupModal";
+import CallNotification from "../components/calls/CallNotification";
+import CallWindow from "../components/calls/CallWindow";
+import GroupCallWindow from "../components/calls/GroupCallWindow";
 
 export default function ChatPage() {
   const { user } = useAuthStore();

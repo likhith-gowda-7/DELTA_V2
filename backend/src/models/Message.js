@@ -67,15 +67,6 @@ const messageSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      index: true,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
   {
     timestamps: true,
@@ -96,11 +87,8 @@ messageSchema.pre("save", function (next) {
   next();
 });
 
-// Populate sender on retrieval
-messageSchema.post("findOne", async function (doc) {
-  if (doc && !doc.populated("sender")) {
-    await doc.populate("sender", "_id name avatar");
-  }
-});
+// L1 FIX: Removed the findOne post-hook that auto-populated sender.
+// It caused double-population in service methods that already populate,
+// and triggered unexpected queries in lean() pipelines.
 
 export default mongoose.model("Message", messageSchema);

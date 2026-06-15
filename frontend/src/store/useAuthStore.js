@@ -12,7 +12,13 @@ export const useAuthStore = create(
       error: null,
 
       setUser: (user) => set({ user }),
-      setAccessToken: (token) => set({ accessToken: token }),
+      setAccessToken: (token) => {
+        // H7 FIX: Single source of truth — Zustand persist handles storage.
+        // We still write to localStorage because the API client interceptor
+        // reads from there (it doesn't have access to the Zustand store).
+        localStorage.setItem("accessToken", token);
+        set({ accessToken: token });
+      },
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
 
@@ -25,12 +31,13 @@ export const useAuthStore = create(
             password,
             passwordConfirm,
           });
+          const { user, accessToken } = response.data.data;
+          localStorage.setItem("accessToken", accessToken);
           set({
-            user: response.data.data.user,
-            accessToken: response.data.data.accessToken,
+            user,
+            accessToken,
             isLoading: false,
           });
-          localStorage.setItem("accessToken", response.data.data.accessToken);
           return response.data;
         } catch (error) {
           const message = error.response?.data?.message || error.message;
@@ -46,12 +53,13 @@ export const useAuthStore = create(
             email,
             password,
           });
+          const { user, accessToken } = response.data.data;
+          localStorage.setItem("accessToken", accessToken);
           set({
-            user: response.data.data.user,
-            accessToken: response.data.data.accessToken,
+            user,
+            accessToken,
             isLoading: false,
           });
-          localStorage.setItem("accessToken", response.data.data.accessToken);
           return response.data;
         } catch (error) {
           const message = error.response?.data?.message || error.message;
@@ -64,11 +72,13 @@ export const useAuthStore = create(
         set({ isLoading: true });
         try {
           await apiClient.post("/auth/logout");
-          set({ user: null, accessToken: null, isLoading: false });
           localStorage.removeItem("accessToken");
+          set({ user: null, accessToken: null, isLoading: false });
         } catch (error) {
           console.error("Logout error:", error);
-          set({ isLoading: false });
+          // Even if the API call fails, clear local state
+          localStorage.removeItem("accessToken");
+          set({ user: null, accessToken: null, isLoading: false });
         }
       },
 
@@ -82,8 +92,8 @@ export const useAuthStore = create(
           });
           return response.data.data;
         } catch (error) {
-          set({ isLoading: false, user: null, accessToken: null });
           localStorage.removeItem("accessToken");
+          set({ isLoading: false, user: null, accessToken: null });
           throw error;
         }
       },
