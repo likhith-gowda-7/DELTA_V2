@@ -1,29 +1,23 @@
-# Dependabot for weekly dependency updates
+# Dependabot is disabled for now.
+# Dependency upgrades will be done manually in dedicated maintenance phases
+# to avoid untested version bumps breaking the production build.
+#
+# To re-enable, uncomment the sections below.
+
 version: 2
-updates:
-  - package-ecosystem: "npm"
-    directory: "/backend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      production:
-        dependency-type: "production"
-      development:
-        dependency-type: "development"
+updates: []
 
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      production:
-        dependency-type: "production"
-      development:
-        dependency-type: "development"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
+# Uncomment below to re-enable:
+# updates:
+#   - package-ecosystem: "npm"
+#     directory: "/backend"
+#     schedule:
+#       interval: "monthly"
+#   - package-ecosystem: "npm"
+#     directory: "/frontend"
+#     schedule:
+#       interval: "monthly"
+#   - package-ecosystem: "github-actions"
+#     directory: "/"
+#     schedule:
+#       interval: "monthly"
