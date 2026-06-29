@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
+const log = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log("[ScreenShare]", ...args);
+  }
+};
+
 /**
  * Custom hook for managing screen sharing with WebRTC
  * Handles getDisplayMedia and track replacement
@@ -57,7 +63,7 @@ export const useScreenShare = (localStream) => {
     } catch (err) {
       const errorMsg = `Failed to start screen share: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
 
       // User cancelled screen capture
       if (err.name === "NotAllowedError") {
@@ -96,7 +102,7 @@ export const useScreenShare = (localStream) => {
     } catch (err) {
       const errorMsg = `Failed to stop screen share: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };

@@ -2,6 +2,13 @@
 
 # ---------- build stage ----------
 FROM node:20-alpine AS build
+
+ARG VITE_API_URL
+ARG VITE_SOCKET_URL
+
+ENV VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+ENV VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:5000}
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci

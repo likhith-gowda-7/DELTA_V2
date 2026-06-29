@@ -64,7 +64,8 @@ const skipIfNoDB = !connectTestDB;
 
       // Access token is verifiable
       const decoded = verifyAccessToken(result.accessToken);
-      expect(decoded.userId).toBe(result.user._id);
+      // JWT stores userId as string; Mongoose ObjectId serialises to the same string
+      expect(decoded.userId).toBe(String(result.user._id));
     });
 
     it("rejects duplicate emails", async () => {
@@ -109,7 +110,7 @@ const skipIfNoDB = !connectTestDB;
       const result = await authService.refreshAccessToken(refreshToken);
       expect(result.accessToken).toBeTruthy();
       const decoded = verifyAccessToken(result.accessToken);
-      expect(decoded.userId).toBe(user._id);
+      expect(decoded.userId).toBe(String(user._id));
     });
 
     it("rejects garbage tokens", async () => {

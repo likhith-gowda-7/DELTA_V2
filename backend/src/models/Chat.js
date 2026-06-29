@@ -67,9 +67,13 @@ chatSchema.pre("save", async function (next) {
   }
 
   // Remove duplicates from users array
-  this.users = [...new Set(this.users.map((id) => id.toString()))].map(
-    (id) => new mongoose.Types.ObjectId(id)
-  );
+  const seen = new Set();
+  this.users = this.users.filter((id) => {
+    const key = id.toString();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   next();
 });

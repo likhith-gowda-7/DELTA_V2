@@ -3,6 +3,9 @@ import User from "../models/User.js";
 import { AppError } from "../lib/AppError.js";
 import logger from "../lib/logger.js";
 
+const includesObjectId = (arr, id) =>
+  arr.some((item) => item.toString() === id.toString());
+
 export const chatService = {
   async createOrAccessChat(userId, otherUserId) {
     // Check if other user exists
@@ -113,7 +116,7 @@ export const chatService = {
     }
 
     // Check if user is admin
-    if (!chat.groupAdmins.includes(userId)) {
+    if (!includesObjectId(chat.groupAdmins, userId)) {
       throw new AppError("Only admins can rename the group", 403);
     }
 
@@ -136,12 +139,12 @@ export const chatService = {
     }
 
     // Check if user is admin
-    if (!chat.groupAdmins.includes(userId)) {
+    if (!includesObjectId(chat.groupAdmins, userId)) {
       throw new AppError("Only admins can add members", 403);
     }
 
     // Check if user already exists
-    if (chat.users.includes(newUserId)) {
+    if (includesObjectId(chat.users, newUserId)) {
       throw new AppError("User is already a member", 409);
     }
 
@@ -172,19 +175,19 @@ export const chatService = {
     }
 
     // Check if user is admin or removing themselves
-    if (!chat.groupAdmins.includes(userId) && userId !== userToRemove) {
+    if (!includesObjectId(chat.groupAdmins, userId) && userId !== userToRemove) {
       throw new AppError("Only admins can remove members", 403);
     }
 
     // Check if user is a member
-    if (!chat.users.includes(userToRemove)) {
+    if (!includesObjectId(chat.users, userToRemove)) {
       throw new AppError("User is not a member of this chat", 400);
     }
 
     chat.users = chat.users.filter((u) => u.toString() !== userToRemove);
 
     // If last admin left, make another admin
-    if (chat.groupAdmins.includes(userToRemove)) {
+    if (includesObjectId(chat.groupAdmins, userToRemove)) {
       chat.groupAdmins = chat.groupAdmins.filter((u) => u.toString() !== userToRemove);
       if (chat.groupAdmins.length === 0 && chat.users.length > 0) {
         chat.groupAdmins.push(chat.users[0]);
@@ -210,17 +213,17 @@ export const chatService = {
     }
 
     // Check if promoter is admin
-    if (!chat.groupAdmins.includes(promoterId)) {
+    if (!includesObjectId(chat.groupAdmins, promoterId)) {
       throw new AppError("Only admins can promote members", 403);
     }
 
     // Check if user is a member
-    if (!chat.users.includes(userId)) {
+    if (!includesObjectId(chat.users, userId)) {
       throw new AppError("User is not a member of this chat", 400);
     }
 
     // Check if already admin
-    if (chat.groupAdmins.includes(userId)) {
+    if (includesObjectId(chat.groupAdmins, userId)) {
       throw new AppError("User is already an admin", 409);
     }
 
@@ -241,12 +244,12 @@ export const chatService = {
     }
 
     // For group chats, only admins can delete
-    if (chat.isGroupChat && !chat.groupAdmins.includes(userId)) {
+    if (chat.isGroupChat && !includesObjectId(chat.groupAdmins, userId)) {
       throw new AppError("Only admins can delete group chats", 403);
     }
 
     // For 1-to-1 chats, only members can delete
-    if (!chat.users.includes(userId)) {
+    if (!includesObjectId(chat.users, userId)) {
       throw new AppError("You are not a member of this chat", 403);
     }
 

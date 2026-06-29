@@ -5,7 +5,6 @@ export const useSocketStore = create((set) => ({
   socket: null,
   isConnected: false,
   onlineUsers: [],
-  typingUsers: [],
 
   setSocket: (socket) => set({ socket }),
   setConnected: (connected) => set({ isConnected: connected }),
@@ -23,19 +22,4 @@ export const useSocketStore = create((set) => ({
     set((state) => ({
       onlineUsers: state.onlineUsers.filter((id) => id !== userId),
     })),
-
-  addTypingUser: (userId) =>
-    set((state) => {
-      if (!state.typingUsers.includes(userId)) {
-        return { typingUsers: [...state.typingUsers, userId] };
-      }
-      return state;
-    }),
-
-  removeTypingUser: (userId) =>
-    set((state) => ({
-      typingUsers: state.typingUsers.filter((id) => id !== userId),
-    })),
-
-  clearTypingUsers: () => set({ typingUsers: [] }),
 }));

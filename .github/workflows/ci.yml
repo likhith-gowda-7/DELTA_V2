@@ -2,67 +2,97 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
-env:
-  NODE_VERSION: "20"
-
 jobs:
-  backend:
-    name: Backend (lint + test)
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
+    strategy:
+      matrix:
+        node-version: [20]
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Lint backend
+        run: npm run lint
+        working-directory: backend
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Test
+        working-directory: backend
+      - name: Run tests
+        run: npm test
+        working-directory: backend
         env:
-          # mongodb-memory-server needs to download a binary
-          MONGOMS_DOWNLOAD_DIR: /tmp/mongoms
-        run: NODE_OPTIONS=--experimental-vm-modules npm test -- --ci
+          NODE_OPTIONS: --experimental-vm-modules
+          JWT_ACCESS_SECRET: test-access-secret-ci
+          JWT_REFRESH_SECRET: test-refresh-secret-ci
+          MONGODB_URI: mongodb://localhost:27017/test
 
-  frontend:
-    name: Frontend (lint + test + build)
+  test-frontend:
+    name: Test Frontend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
+    strategy:
+      matrix:
+        node-version: [20]
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Test
+        working-directory: frontend
+      - name: Run tests
         run: npm test
-      - name: Build
-        env:
-          VITE_API_URL: http://localhost:5000/api
-          VITE_SOCKET_URL: http://localhost:5000
-        run: npm run build
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        working-directory: frontend
+
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
-          retention-days: 7
-          if-no-files-found: error
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Build
+        run: npm run build
+        working-directory: frontend

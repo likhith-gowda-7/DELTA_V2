@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { RTC_CONFIG, GROUP_CALL_LIMITS } from "../lib/callConfig.js";
 
+const log = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log("[GroupWebRTC]", ...args);
+  }
+};
+
 /**
  * Custom hook for managing multiple WebRTC peer connections in group calls.
  * Mesh topology for up to GROUP_CALL_LIMITS.MAX_PARTICIPANTS participants.
@@ -39,7 +45,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     } catch (err) {
       const errorMsg = `Failed to get media: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -65,14 +71,14 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
 
       // Handle remote stream
       peerConnection.ontrack = (event) => {
-        console.log(`Remote track received from ${peerId}:`, event.track.kind);
+        log(`Remote track received from ${peerId}:`, event.track.kind);
         remoteStreamsRef.current.set(peerId, event.streams[0]);
         setRemoteStreams(new Map(remoteStreamsRef.current));
       };
 
       // Handle connection state changes
       peerConnection.onconnectionstatechange = () => {
-        console.log(
+        log(
           `Connection state with ${peerId}:`,
           peerConnection.connectionState,
         );
@@ -97,7 +103,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
 
       // Handle ICE connection state changes
       peerConnection.oniceconnectionstatechange = () => {
-        console.log(
+        log(
           `ICE connection state with ${peerId}:`,
           peerConnection.iceConnectionState,
         );
@@ -106,7 +112,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
       // Handle ICE candidates — emit to remote peer via socket
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log(`ICE candidate for ${peerId}:`, event.candidate);
+          log(`ICE candidate for ${peerId}:`, event.candidate);
           if (socket?.current) {
             socket.current.emit("webrtc_ice_candidate", {
               callId,
@@ -124,7 +130,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     } catch (err) {
       const errorMsg = `Failed to initialize peer connection with ${peerId}: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -145,7 +151,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     } catch (err) {
       const errorMsg = `Failed to create offer for ${peerId}: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -166,7 +172,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     } catch (err) {
       const errorMsg = `Failed to create answer for ${peerId}: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -187,7 +193,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     } catch (err) {
       const errorMsg = `Failed to set remote description for ${peerId}: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -199,7 +205,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
     try {
       const peerConnection = peerConnectionsRef.current.get(peerId);
       if (!peerConnection) {
-        console.warn(`Peer connection not found for ${peerId}`);
+        log(`Peer connection not found for ${peerId}`);
         return;
       }
 
@@ -207,7 +213,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       }
     } catch (err) {
-      console.warn(`Failed to add ICE candidate for ${peerId}:`, err.message);
+      log(`Failed to add ICE candidate for ${peerId}:`, err.message);
     }
   };
 
@@ -294,7 +300,7 @@ export const useGroupWebRTC = (callId, userId, participantIds = [], socket = nul
         });
       }
     } catch (err) {
-      console.error(`Failed to add participant ${peerId}:`, err);
+      log(`Failed to add participant ${peerId}:`, err);
       throw err;
     }
   };

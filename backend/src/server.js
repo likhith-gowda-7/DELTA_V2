@@ -1,6 +1,8 @@
 
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import cookieParser from "cookie-parser";
@@ -9,6 +11,7 @@ import connectDB from "./config/database.js";
 import logger from "./lib/logger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import { apiLimiter } from "./middleware/rateLimit.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import healthRoutes from "./routes/health.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
@@ -48,8 +51,11 @@ export const io = new SocketIOServer(httpServer, {
 });
 
 // Middleware
+app.use(helmet());
+app.use(compression());
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
+app.use(requestLogger);
 
 app.use(
   cors({

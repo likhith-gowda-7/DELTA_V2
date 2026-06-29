@@ -6,6 +6,7 @@ export const useChatStore = create((set) => ({
   chats: [],
   selectedChat: null,
   messages: [],
+  typingUsers: {},
   notifications: [],
   loading: false,
   loadingMessages: false,

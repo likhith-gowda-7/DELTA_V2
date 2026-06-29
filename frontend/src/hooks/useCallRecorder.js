@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
+const log = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log("[CallRecorder]", ...args);
+  }
+};
+
 /**
  * Custom hook for managing call recording with MediaRecorder API
  * Records combined audio/video streams from all participants
@@ -100,7 +106,7 @@ export const useCallRecorder = (streams = []) => {
     } catch (err) {
       const errorMsg = `Failed to start recording: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -143,7 +149,7 @@ export const useCallRecorder = (streams = []) => {
     } catch (err) {
       const errorMsg = `Failed to stop recording: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };
@@ -164,7 +170,7 @@ export const useCallRecorder = (streams = []) => {
     } catch (err) {
       const errorMsg = `Failed to download recording: ${err.message}`;
       setError(errorMsg);
-      console.error(errorMsg);
+      log(errorMsg);
       throw err;
     }
   };

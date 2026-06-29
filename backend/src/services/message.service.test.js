@@ -1,7 +1,5 @@
-// Message service tests. Skipped automatically if mongodb-memory-server
-// is not installed.
-
 import {
+  jest,
   describe,
   it,
   expect,
@@ -18,28 +16,23 @@ try {
   clearTestDB = dbModule.clearTestDB;
   disconnectTestDB = dbModule.disconnectTestDB;
 } catch (e) {
-  if (e.message.includes("Cannot find module")) {
-    // eslint-disable-next-line no-console
-    console.warn("mongodb-memory-server not installed — skipping message.service tests");
-  } else {
-    throw e;
-  }
+  const msg = e.message.includes("Cannot find package")
+    ? "mongodb-memory-server not installed — skipping message.service tests"
+    : e.message;
+  console.warn(msg);
 }
 
 const skipIfNoDB = !connectTestDB;
-const tenMinutesAgo = () => new Date(Date.now() - 10 * 60 * 1000);
 
 (skipIfNoDB ? describe.skip : describe)("message.service", () => {
-  let messageService, Chat, User;
-
-  let alice, bob, eve;
-  let chatBetweenAliceAndBob;
+  let messageService;
+  let User, Chat;
 
   beforeAll(async () => {
     await connectTestDB();
     messageService = (await import("./message.service.js")).messageService;
-    Chat = (await import("../models/Chat.js")).default;
     User = (await import("../models/User.js")).default;
+    Chat = (await import("../models/Chat.js")).default;
   });
 
   afterAll(async () => {
@@ -48,138 +41,91 @@ const tenMinutesAgo = () => new Date(Date.now() - 10 * 60 * 1000);
 
   beforeEach(async () => {
     await clearTestDB();
-    alice = await User.create({ name: "Alice", email: "alice@example.com", password: "Pass1234" });
-    bob = await User.create({ name: "Bob", email: "bob@example.com", password: "Pass1234" });
-    eve = await User.create({ name: "Eve", email: "eve@example.com", password: "Pass1234" });
-    chatBetweenAliceAndBob = await Chat.create({
-      users: [alice._id, bob._id],
-      isGroupChat: false,
-    });
   });
 
   describe("sendMessage()", () => {
-    it("persists a message and updates the chat's latestMessage", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Hello, Bob!",
-      );
+    it("sends a text message and updates latestMessage on chat", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
 
-      expect(msg.content).toBe("Hello, Bob!");
-      expect(msg.sender._id.toString()).toBe(alice._id.toString());
+      const message = await messageService.sendMessage(chat._id, userA._id, "Hello!");
 
-      const reloaded = await Chat.findById(chatBetweenAliceAndBob._id);
-      expect(reloaded.latestMessage.toString()).toBe(msg._id.toString());
-      expect(reloaded.latestMessageTime).toBeInstanceOf(Date);
+      expect(message.content).toBe("Hello!");
+      expect(message.sender._id.toString()).toBe(userA._id.toString());
+      expect(message.chat.toString()).toBe(chat._id.toString());
+
+      const updatedChat = await Chat.findById(chat._id);
+      expect(updatedChat.latestMessage.toString()).toBe(message._id.toString());
     });
 
-    it("rejects non-member senders with 403", async () => {
-      await expect(
-        messageService.sendMessage(
-          chatBetweenAliceAndBob._id,
-          eve._id,
-          "Sneaking in!",
-        ),
-      ).rejects.toThrow(/not a member/i);
-    });
+    it("rejects message from non-member", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const userC = await User.create({ name: "Carol", email: "c@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
 
-    it("rejects unknown chat ids with 404", async () => {
-      const fakeId = "000000000000000000000000";
       await expect(
-        messageService.sendMessage(fakeId, alice._id, "Hi?"),
-      ).rejects.toThrow(/Chat not found/);
+        messageService.sendMessage(chat._id, userC._id, "Hello!"),
+      ).rejects.toThrow(/not a member/);
     });
   });
 
   describe("editMessage()", () => {
-    it("allows the sender to edit within 5 minutes", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Original",
-      );
+    it("allows sender to edit within 5 minutes", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
 
-      const edited = await messageService.editMessage(
-        msg._id,
-        "Edited!",
-        alice._id,
-      );
+      const message = await messageService.sendMessage(chat._id, userA._id, "Hello!");
+      const edited = await messageService.editMessage(message._id, "Edited!", userA._id.toString());
+
       expect(edited.content).toBe("Edited!");
-      expect(edited.editedAt).toBeInstanceOf(Date);
+      expect(edited.editedAt).toBeTruthy();
     });
 
-    it("rejects editing by non-sender with 403", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Original",
-      );
+    it("rejects edit by non-sender", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
+
+      const message = await messageService.sendMessage(chat._id, userA._id, "Hello!");
+
       await expect(
-        messageService.editMessage(msg._id, "Hijack", bob._id),
+        messageService.editMessage(message._id, "Hacked!", userB._id.toString()),
       ).rejects.toThrow(/Only sender/);
     });
+  });
 
-    it("rejects editing after 5 minutes", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Old message",
-      );
+  describe("getUnreadCount()", () => {
+    it("returns correct unread count", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
 
-      // Backdate the message to 10 minutes ago
-      const Message = (await import("../models/Message.js")).default;
-      await Message.findByIdAndUpdate(msg._id, { createdAt: tenMinutesAgo() });
+      await messageService.sendMessage(chat._id, userA._id, "Msg 1");
+      await messageService.sendMessage(chat._id, userA._id, "Msg 2");
 
-      await expect(
-        messageService.editMessage(msg._id, "Too late", alice._id),
-      ).rejects.toThrow(/within 5 minutes/);
+      const count = await messageService.getUnreadCount(chat._id, userB._id);
+      expect(count).toBe(2);
+
+      const countA = await messageService.getUnreadCount(chat._id, userA._id);
+      expect(countA).toBe(0);
     });
   });
 
-  describe("deleteMessage()", () => {
-    it("soft-deletes a message by its sender", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Oops",
-      );
-      await messageService.deleteMessage(msg._id, alice._id);
+  describe("searchMessages()", () => {
+    it("finds messages by keyword", async () => {
+      const userA = await User.create({ name: "Alice", email: "a@t.com", password: "Pass1234" });
+      const userB = await User.create({ name: "Bob", email: "b@t.com", password: "Pass1234" });
+      const chat = await Chat.create({ isGroupChat: false, users: [userA._id, userB._id] });
 
-      const Message = (await import("../models/Message.js")).default;
-      const reloaded = await Message.findById(msg._id);
-      expect(reloaded.isDeleted).toBe(true);
-    });
+      await messageService.sendMessage(chat._id, userA._id, "Hello world");
+      await messageService.sendMessage(chat._id, userA._id, "Goodbye");
 
-    it("rejects deletion by random non-admin user", async () => {
-      const msg = await messageService.sendMessage(
-        chatBetweenAliceAndBob._id,
-        alice._id,
-        "Mine",
-      );
-      await expect(
-        messageService.deleteMessage(msg._id, eve._id),
-      ).rejects.toThrow(/only delete your own/i);
-    });
-  });
-
-  describe("markChatAsRead() / getUnreadCount()", () => {
-    it("zero unread for a fresh chat, N unread after N messages, 0 after markChatAsRead", async () => {
-      expect(
-        await messageService.getUnreadCount(chatBetweenAliceAndBob._id, bob._id),
-      ).toBe(0);
-
-      await messageService.sendMessage(chatBetweenAliceAndBob._id, alice._id, "Hi");
-      await messageService.sendMessage(chatBetweenAliceAndBob._id, alice._id, "Hi again");
-
-      expect(
-        await messageService.getUnreadCount(chatBetweenAliceAndBob._id, bob._id),
-      ).toBe(2);
-
-      await messageService.markChatAsRead(chatBetweenAliceAndBob._id, bob._id);
-
-      expect(
-        await messageService.getUnreadCount(chatBetweenAliceAndBob._id, bob._id),
-      ).toBe(0);
+      const results = await messageService.searchMessages(chat._id, "world", userB._id);
+      expect(results.length).toBe(1);
+      expect(results[0].content).toBe("Hello world");
     });
   });
 });

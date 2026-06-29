@@ -58,6 +58,12 @@ const notificationSchema = new mongoose.Schema(
 // Index for finding unread notifications for a user
 notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
 
+// TTL index: automatically remove notifications older than 30 days
+notificationSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 30 * 24 * 60 * 60 },
+);
+
 // Pre-save hook to validate
 notificationSchema.pre("save", async function (next) {
   if (!this.isNew && !this.isModified("read")) {

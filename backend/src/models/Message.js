@@ -4,10 +4,18 @@ const messageSchema = new mongoose.Schema(
   {
     content: {
       type: String,
-      required: [true, "Message content is required"],
+      default: "",
       trim: true,
-      minlength: [1, "Message cannot be empty"],
       maxlength: [5000, "Message cannot exceed 5000 characters"],
+      validate: {
+        validator: function (value) {
+          if (!this.fileUrl) {
+            return value && value.trim().length > 0;
+          }
+          return true;
+        },
+        message: "Message content is required",
+      },
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,

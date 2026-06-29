@@ -3,6 +3,9 @@ import Chat from "../models/Chat.js";
 import { AppError } from "../lib/AppError.js";
 import logger from "../lib/logger.js";
 
+const includesObjectId = (arr, id) =>
+  arr.some((item) => item.toString() === id.toString());
+
 export const messageService = {
   async sendMessage(
     chatId,
@@ -19,7 +22,7 @@ export const messageService = {
       throw new AppError("Chat not found", 404);
     }
 
-    if (!chat.users.includes(senderId)) {
+    if (!includesObjectId(chat.users, senderId)) {
       throw new AppError("You are not a member of this chat", 403);
     }
 
@@ -54,7 +57,7 @@ export const messageService = {
       throw new AppError("Chat not found", 404);
     }
 
-    if (!chat.users.includes(userId)) {
+    if (!includesObjectId(chat.users, userId)) {
       throw new AppError("You are not a member of this chat", 403);
     }
 
@@ -110,7 +113,7 @@ export const messageService = {
     // Check if user is the sender or chat admin
     const chat = await Chat.findById(message.chat);
     const isSender = message.sender.toString() === userId;
-    const isAdmin = chat?.groupAdmins?.includes(userId);
+    const isAdmin = chat?.groupAdmins?.some((id) => id.toString() === userId);
 
     if (!isSender && !isAdmin) {
       throw new AppError("You can only delete your own messages", 403);
@@ -173,7 +176,7 @@ export const messageService = {
   async searchMessages(chatId, keyword, userId) {
     // Verify user is a member of the chat
     const chat = await Chat.findById(chatId);
-    if (!chat || !chat.users.includes(userId)) {
+    if (!chat || !includesObjectId(chat.users, userId)) {
       throw new AppError("Unauthorized", 403);
     }
 

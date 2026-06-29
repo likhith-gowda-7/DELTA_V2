@@ -44,7 +44,7 @@ export const createNotification = async (
 
     // Populate references for response
     const populated = await notification.populate([
-      { path: "triggerUserId", select: "fullName avatar" },
+      { path: "triggerUserId", select: "name avatar" },
       { path: "chatId", select: "name isGroupChat" },
     ]);
 
@@ -64,7 +64,7 @@ export const getNotifications = async (userId, page = 1, limit = 20) => {
     const skip = (page - 1) * limit;
 
     const notifications = await Notification.find({ userId })
-      .populate("triggerUserId", "fullName avatar")
+      .populate("triggerUserId", "name avatar")
       .populate("chatId", "name isGroupChat")
       .populate("messageId", "content")
       .sort({ createdAt: -1 })
@@ -95,7 +95,7 @@ export const getUnreadNotifications = async (userId, limit = 10) => {
       userId,
       read: false,
     })
-      .populate("triggerUserId", "fullName avatar")
+      .populate("triggerUserId", "name avatar")
       .populate("chatId", "name isGroupChat")
       .sort({ createdAt: -1 })
       .limit(limit)

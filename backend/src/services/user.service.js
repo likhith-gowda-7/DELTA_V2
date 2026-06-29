@@ -49,7 +49,9 @@ export const userService = {
 
     // Check if current user has blocked this user
     const currentUser = await User.findById(currentUserId);
-    const isBlocked = currentUser?.blockedUsers.includes(userId);
+    const isBlocked = currentUser?.blockedUsers.some(
+      (id) => id.toString() === userId.toString(),
+    );
 
     return {
       ...user.toObject(),
@@ -70,7 +72,7 @@ export const userService = {
     }
 
     // Check if already blocked
-    if (user.blockedUsers.includes(blockUserId)) {
+    if (user.blockedUsers.some((id) => id.toString() === blockUserId.toString())) {
       throw new AppError("User is already blocked", 409);
     }
 
@@ -85,12 +87,12 @@ export const userService = {
   async unblockUser(userId, unblockUserId) {
     const user = await User.findById(userId);
 
-    if (!user.blockedUsers.includes(unblockUserId)) {
+    if (!user.blockedUsers.some((id) => id.toString() === unblockUserId.toString())) {
       throw new AppError("User is not blocked", 400);
     }
 
     user.blockedUsers = user.blockedUsers.filter(
-      (id) => id.toString() !== unblockUserId,
+      (id) => id.toString() !== unblockUserId.toString(),
     );
     await user.save();
 
