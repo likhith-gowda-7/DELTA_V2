@@ -6,12 +6,12 @@ Modern, production-grade real-time communication platform built with the MERN st
 
 DELTA is a complete rebuild of the original chat application, engineered for production with:
 
-- ✅ **Security** — JWT with httpOnly cookies, token refresh mutex, rate limiting, Zod validation, regex-safe search
-- ✅ **Performance** — Message pagination, bulk `updateMany` operations, optimized MongoDB indexes, dev-only logging
-- ✅ **Real-time** — Socket.IO with persistent presence tracking, typing indicators, read receipts, WebRTC calls
-- ✅ **Resilience** — Socket re-authentication after token refresh, stale closure protection, error boundaries
-- ✅ **Modern Stack** — React 18, Vite 5, Zustand, Tailwind CSS, ESM throughout
-- ✅ **Production-ready** — Centralized config, structured logging, comprehensive error handling
+- ✅ **Security** — JWT with httpOnly cookies, token refresh mutex, rate limiting, Zod validation, regex-safe search, Helmet headers
+- ✅ **Performance** — Message pagination, bulk `updateMany`, MongoDB indexes, gzip compression, dev-only logging
+- ✅ **Real-time** — Socket.IO with persistent presence, typing indicators, read receipts, WebRTC calls
+- ✅ **Resilience** — Socket re-authentication, stale closure protection, error boundaries, toast notifications
+- ✅ **Modern Stack** — React 18, Vite 5, Zustand, Tailwind CSS, PWA with service worker, ESM throughout
+- ✅ **Production-ready** — Docker, CI/CD, structured logging, centralized config, architecture docs
 
 ## Project Status
 
@@ -25,8 +25,11 @@ DELTA is a complete rebuild of the original chat application, engineered for pro
 | 6 | 1-to-1 Video/Audio Calls & History | ✅ Complete |
 | 7a | Group Calls, Screen Share, Recording | ✅ Code complete |
 | 7b | SFU, Server-side Recording, Call Analytics | 📋 Planned |
-| 8 | Production Readiness & Deploy | 🛠 In progress |
 | **Audit** | **Engineering Audit & Stabilization** | ✅ **Complete (Phases A–D)** |
+| **E** | **Feature Completion & UX Polish** | ✅ **Complete** |
+| **F** | **Testing, CI/CD & Documentation** | ✅ **Complete** |
+
+
 
 ### Engineering Audit Summary (Latest)
 
@@ -275,6 +278,8 @@ MIT
 
 ---
 
-**Project Status**: 🛠 Phase 8 in progress (production readiness)
-**Last Updated**: 2026-06-15
+**Project Status**: ✅ Core complete — Phases A–F done. Phase 7b (SFU) planned.
+**Last Updated**: 2026-06-29
 **Maintainer**: Likhith Gowda
+**Architecture**: See [ARCHITECTURE.md](./ARCHITECTURE.md)
+

@@ -7,6 +7,8 @@ import {
 } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+import ToastContainer from "./components/common/ToastContainer";
 
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
@@ -39,30 +41,33 @@ function App() {
   }
 
   return (
-    <Router>
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-            <div className="inline-block animate-spin">
-              <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-primary-600 rounded-full"></div>
+    <ErrorBoundary>
+      <Router>
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
+              <div className="inline-block animate-spin">
+                <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-primary-600 rounded-full"></div>
+              </div>
             </div>
-          </div>
-        }
-      >
-        <Routes>
-          <Route path="/" element={<AuthPage />} />
-          <Route
-            path="/chats"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </Router>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<AuthPage />} />
+            <Route
+              path="/chats"
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+        <ToastContainer />
+      </Router>
+    </ErrorBoundary>
   );
 }
 
