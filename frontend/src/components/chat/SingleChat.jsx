@@ -3,6 +3,8 @@ import { MessageSquare, Loader, Send, X } from "lucide-react";
 import ChatHeader from "./ChatHeader";
 import FileUploadButton from "./FileUploadButton";
 import FilePreview from "./FilePreview";
+import TypingIndicator from "./TypingIndicator";
+import ReadReceipt from "./ReadReceipt";
 import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useSocketStore } from "../../store/useSocketStore";
@@ -17,12 +19,12 @@ export default function SingleChat({ chat, onUpdateGroupClick }) {
     addMessage,
     loadingMessages,
     setLoadingMessages,
+    clearUnread,
   } = useChatStore();
   const { socket } = useSocketStore();
   const { uploadFile } = useFileUpload();
   const [messageInput, setMessageInput] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [typingUsers, setTypingUsers] = useState([]);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -35,6 +37,8 @@ export default function SingleChat({ chat, onUpdateGroupClick }) {
       try {
         const data = await messagesAPI.getMessages(chat._id, 0, 50);
         setMessages(data.messages || []);
+        // Clear unread count when opening a chat
+        clearUnread(chat._id);
       } catch (error) {
         console.error("Failed to fetch messages:", error);
       } finally {
@@ -278,7 +282,7 @@ export default function SingleChat({ chat, onUpdateGroupClick }) {
                       </p>
                     )}
                     <div
-                      className={`text-xs mt-1 flex items-center justify-between gap-2 ${
+                      className={`text-xs mt-1 flex items-center justify-end gap-1 ${
                         isOwnMessage(message.sender._id)
                           ? "text-blue-100"
                           : "text-gray-500 dark:text-gray-400"
@@ -289,9 +293,10 @@ export default function SingleChat({ chat, onUpdateGroupClick }) {
                         <span className="italic">(edited)</span>
                       )}
                       {isOwnMessage(message.sender._id) && (
-                        <span className="text-xs">
-                          {message.readBy?.length > 1 ? "✓✓" : "✓"}
-                        </span>
+                        <ReadReceipt
+                          readBy={message.readBy || []}
+                          chatUsers={chat.users || []}
+                        />
                       )}
                     </div>
                   </div>
@@ -300,21 +305,12 @@ export default function SingleChat({ chat, onUpdateGroupClick }) {
             );
           })}
 
-        {/* Typing indicator */}
-        {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-            </div>
-            <span>
-              {typingUsers.length === 1
-                ? `${typingUsers[0]} is typing`
-                : `${typingUsers.length} people are typing`}
-            </span>
-          </div>
-        )}
+        {/* Typing indicator — reads from useChatStore.typingUsers */}
+        <TypingIndicator
+          chatId={chat._id}
+          chatUsers={chat.users || []}
+          currentUserId={user?._id}
+        />
 
         <div ref={messagesEndRef} />
       </div>

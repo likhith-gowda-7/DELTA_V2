@@ -7,6 +7,7 @@ export const useChatStore = create((set) => ({
   selectedChat: null,
   messages: [],
   typingUsers: {},
+  unreadCounts: {}, // { [chatId]: number }
   notifications: [],
   loading: false,
   loadingMessages: false,
@@ -219,4 +220,23 @@ export const useChatStore = create((set) => ({
     })),
 
   clearNotifications: () => set({ notifications: [] }),
+
+  // Unread count actions
+  incrementUnread: (chatId) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [chatId]: (state.unreadCounts[chatId] || 0) + 1,
+      },
+    })),
+
+  clearUnread: (chatId) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [chatId]: 0,
+      },
+    })),
+
+  setUnreadCounts: (counts) => set({ unreadCounts: counts }),
 }));

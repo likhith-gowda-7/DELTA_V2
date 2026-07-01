@@ -3,9 +3,10 @@ import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useSocketStore } from "../../store/useSocketStore";
 import { MessageSquare, Plus } from "lucide-react";
+import UnreadBadge from "./UnreadBadge";
 
 export default function ChatList({ onSelectChat, onCreateGroupClick }) {
-  const { chats, selectedChat, setSelectedChat, loading } = useChatStore();
+  const { chats, selectedChat, setSelectedChat, unreadCounts, clearUnread, loading } = useChatStore();
   const { user } = useAuthStore();
   const { onlineUsers } = useSocketStore();
 
@@ -35,8 +36,15 @@ export default function ChatList({ onSelectChat, onCreateGroupClick }) {
     if (!chat.latestMessage) return "Start a conversation";
     const isOwnMessage = chat.latestMessage.sender._id === user._id;
     const prefix = isOwnMessage ? "You: " : "";
-    const message = chat.latestMessage.content.substring(0, 30);
-    return prefix + message + (chat.latestMessage.content.length > 30 ? "..." : "");
+    const content = chat.latestMessage.content || "📎 File";
+    const message = content.substring(0, 30);
+    return prefix + message + (content.length > 30 ? "..." : "");
+  };
+
+  const handleSelectChat = (chat) => {
+    setSelectedChat(chat);
+    clearUnread(chat._id);
+    onSelectChat?.(chat);
   };
 
   if (loading) {
@@ -84,10 +92,7 @@ export default function ChatList({ onSelectChat, onCreateGroupClick }) {
         {chats.map((chat) => (
           <div
             key={chat._id}
-            onClick={() => {
-              setSelectedChat(chat);
-              onSelectChat?.(chat);
-            }}
+            onClick={() => handleSelectChat(chat)}
             className={`p-3 rounded-lg cursor-pointer transition ${
               selectedChat?._id === chat._id
                 ? "bg-blue-600 text-white"
@@ -106,7 +111,10 @@ export default function ChatList({ onSelectChat, onCreateGroupClick }) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold truncate">{getOtherUserName(chat)}</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold truncate">{getOtherUserName(chat)}</h4>
+                  <UnreadBadge count={unreadCounts[chat._id] || 0} />
+                </div>
                 <p
                   className={`text-sm truncate ${
                     selectedChat?._id === chat._id

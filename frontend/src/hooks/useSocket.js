@@ -122,6 +122,9 @@ export const useSocket = () => {
         const currentChat = selectedChatRef.current;
         if (currentChat?._id === message.chatId) {
           addMessage(message);
+        } else {
+          // Message is for a non-active chat — bump unread counter
+          useChatStore.getState().incrementUnread(message.chatId);
         }
       });
 
@@ -144,40 +147,35 @@ export const useSocket = () => {
         }
       });
 
-      // M3 FIX: Typing indicators — dispatch to store for UI rendering
+      // M3 FIX: Typing indicators — dispatch to store for UI rendering.
+      // Store typing for ALL chats — the TypingIndicator filters by chatId.
       newSocket.on("user_typing", (typingData) => {
         log(`User typing: ${typingData.userId} in chat: ${typingData.chatId}`);
-        const currentChat = selectedChatRef.current;
-        if (currentChat?._id === typingData.chatId) {
-          useChatStore.setState((state) => {
-            const typingUsers = state.typingUsers || {};
-            return {
-              typingUsers: {
-                ...typingUsers,
-                [typingData.chatId]: {
-                  ...(typingUsers[typingData.chatId] || {}),
-                  [typingData.userId]: Date.now(),
-                },
+        useChatStore.setState((state) => {
+          const typingUsers = state.typingUsers || {};
+          return {
+            typingUsers: {
+              ...typingUsers,
+              [typingData.chatId]: {
+                ...(typingUsers[typingData.chatId] || {}),
+                [typingData.userId]: Date.now(),
               },
-            };
-          });
-        }
+            },
+          };
+        });
       });
 
       newSocket.on("user_stopped_typing", (typingData) => {
         log(`User stopped typing: ${typingData.userId}`);
-        const currentChat = selectedChatRef.current;
-        if (currentChat?._id === typingData.chatId) {
-          useChatStore.setState((state) => {
-            const typingUsers = { ...(state.typingUsers || {}) };
-            if (typingUsers[typingData.chatId]) {
-              const chatTyping = { ...typingUsers[typingData.chatId] };
-              delete chatTyping[typingData.userId];
-              typingUsers[typingData.chatId] = chatTyping;
-            }
-            return { typingUsers };
-          });
-        }
+        useChatStore.setState((state) => {
+          const typingUsers = { ...(state.typingUsers || {}) };
+          if (typingUsers[typingData.chatId]) {
+            const chatTyping = { ...typingUsers[typingData.chatId] };
+            delete chatTyping[typingData.userId];
+            typingUsers[typingData.chatId] = chatTyping;
+          }
+          return { typingUsers };
+        });
       });
 
       // M4 FIX: Read receipts — update message readBy state
