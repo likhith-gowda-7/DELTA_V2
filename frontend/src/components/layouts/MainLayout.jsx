@@ -2,10 +2,9 @@ import { useEffect } from "react";
 import { useSocket } from "../../hooks/useSocket";
 import { useUIStore } from "../../store/useUIStore";
 import Sidebar from "../sidebar/Sidebar";
-import UserProfileModal from "../modals/UserProfileModal";
 import { cn } from "../../lib/cn";
 
-export default function MainLayout({ children }) {
+export default function MainLayout({ children, onSelectUser, onSelectChat, onCreateGroupClick }) {
   const socket = useSocket(); // Initialize socket connection
   const { sidebarOpen } = useUIStore();
 
@@ -15,7 +14,11 @@ export default function MainLayout({ children }) {
 
   return (
     <div className="flex h-screen bg-white dark:bg-slate-950">
-      <Sidebar onSelectUser={() => {}} />
+      <Sidebar
+        onSelectUser={onSelectUser}
+        onSelectChat={onSelectChat}
+        onCreateGroupClick={onCreateGroupClick}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">

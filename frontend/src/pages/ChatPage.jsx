@@ -4,7 +4,6 @@ import { useChatStore } from "../store/useChatStore";
 import { useSocketStore } from "../store/useSocketStore";
 import { useCallStore } from "../store/useCallStore";
 import MainLayout from "../components/layouts/MainLayout";
-import ChatList from "../components/chat/ChatList";
 import SingleChat from "../components/chat/SingleChat";
 import CreateGroupModal from "../components/modals/CreateGroupModal";
 import UpdateGroupModal from "../components/modals/UpdateGroupModal";
@@ -14,7 +13,7 @@ import GroupCallWindow from "../components/calls/GroupCallWindow";
 
 export default function ChatPage() {
   const { user } = useAuthStore();
-  const { chats, selectedChat, fetchChats } = useChatStore();
+  const { chats, selectedChat, fetchChats, createOrAccessChat } = useChatStore();
   const { socket } = useSocketStore();
   const {
     setIncomingCall,
@@ -38,7 +37,6 @@ export default function ChatPage() {
     if (!socket) return;
 
     const handleIncomingCall = (data) => {
-      // Create incoming call object
       const incomingCall = {
         _id: data.callId,
         initiatorId: data.initiatorId,
@@ -47,19 +45,32 @@ export default function ChatPage() {
         status: "pending",
         createdAt: new Date(),
       };
-
       setIncomingCall(incomingCall);
     };
 
     socket.on("incoming_call", handleIncomingCall);
-
     return () => {
       socket.off("incoming_call", handleIncomingCall);
     };
   }, [socket, user, setIncomingCall]);
 
+  // Handler: when a user is selected from search, create/access a 1-to-1 chat
+  const handleSelectUser = async (selectedUser) => {
+    try {
+      await createOrAccessChat(selectedUser._id);
+      // fetchChats to refresh the chat list with the new/existing chat
+      await fetchChats();
+    } catch (error) {
+      console.error("Failed to create/access chat:", error);
+    }
+  };
+
   return (
-    <MainLayout>
+    <MainLayout
+      onSelectUser={handleSelectUser}
+      onSelectChat={() => {}}
+      onCreateGroupClick={() => setShowCreateGroupModal(true)}
+    >
       {/* Incoming Call Notification */}
       <CallNotification />
 
@@ -85,36 +96,26 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex-1 flex bg-white dark:bg-gray-800">
-        {/* Chat List */}
-        <div className="w-80 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col">
-          <ChatList
-            onSelectChat={() => {}}
-            onCreateGroupClick={() => setShowCreateGroupModal(true)}
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {selectedChat ? (
+          <SingleChat
+            chat={selectedChat}
+            onUpdateGroupClick={() => setShowUpdateGroupModal(true)}
           />
-        </div>
-
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {selectedChat ? (
-            <SingleChat
-              chat={selectedChat}
-              onUpdateGroupClick={() => setShowUpdateGroupModal(true)}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-center p-4">
-              <div>
-                <div className="text-6xl mb-4">💬</div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                  Select a chat to start
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Choose from your chats or start a new conversation
-                </p>
-              </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-center p-4">
+            <div>
+              <div className="text-6xl mb-4">💬</div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                Select a chat to start
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Choose from your chats or start a new conversation
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

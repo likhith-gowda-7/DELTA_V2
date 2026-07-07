@@ -4,9 +4,10 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useUIStore } from "../../store/useUIStore";
 import { useSocketStore } from "../../store/useSocketStore";
 import UserSearch from "./UserSearch";
+import ChatList from "../chat/ChatList";
 import { cn } from "../../lib/cn";
 
-export default function Sidebar({ onSelectUser }) {
+export default function Sidebar({ onSelectUser, onSelectChat, onCreateGroupClick }) {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { onlineUsers } = useSocketStore();
@@ -36,7 +37,7 @@ export default function Sidebar({ onSelectUser }) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed lg:static inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-40 transform transition-transform duration-300",
+          "fixed lg:static inset-y-0 left-0 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-40 transform transition-transform duration-300",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -54,12 +55,15 @@ export default function Sidebar({ onSelectUser }) {
             <UserSearch onSelectUser={onSelectUser} />
           </div>
 
-          {/* Placeholder for chat list (Phase 4) */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-500 text-center py-8">
-              Chat list coming in Phase 4...
-            </p>
-          </div>
+          {/* Chat list */}
+          <ChatList
+            onSelectChat={(chat) => {
+              onSelectChat?.(chat);
+              // Auto-close sidebar on mobile after selecting a chat
+              setSidebarOpen(false);
+            }}
+            onCreateGroupClick={onCreateGroupClick}
+          />
 
           {/* User profile section */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
