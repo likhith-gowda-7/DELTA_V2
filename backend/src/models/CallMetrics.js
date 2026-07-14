@@ -22,7 +22,6 @@ const callMetricsSchema = new mongoose.Schema(
     timestamp: {
       type: Date,
       default: () => new Date(),
-      index: true,
     },
     // Quality samples (all optional, clients send what they measure)
     audio: { type: String, enum: ["hd", "sd", "low", null], default: null },
